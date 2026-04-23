@@ -1,0 +1,54 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: nest-backend
+    env_file:
+      - ./backend/.env
+    environment:
+      PORT: "8000"
+      HOST: "0.0.0.0"
+      FRONTEND_ORIGIN: "http://localhost"
+      DEBUG: "false"
+    expose:
+      - "8000"
+    # Comment in for direct backend access during dev:
+    # ports:
+    #   - "8000:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Build-time baked into the Next.js bundle. For prod behind nginx
+        # we use the same origin; for split deploys override at build time.
+        NEXT_PUBLIC_API_URL: ""
+    container_name: nest-frontend
+    environment:
+      PORT: "8100"
+      NEXT_PUBLIC_API_URL: ""
+    expose:
+      - "8100"
+    # ports:
+    #   - "8100:8100"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nest-nginx
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
