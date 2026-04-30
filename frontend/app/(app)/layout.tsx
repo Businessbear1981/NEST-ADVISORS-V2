@@ -11,16 +11,15 @@ const NAV_CLIENT = [
 ]
 const NAV_ADMIN = [
   { label: 'Dashboard', href: '/dashboard' },
-  { label: 'Fund', href: '/fund' },
+  { label: 'Deals', href: '/admin/deals' },
   { label: 'M&A', href: '/admin/ma' },
   { label: 'Lenders', href: '/admin/lenders' },
-  { label: 'Risk', href: '/admin/risk' },
-  { label: 'Surety', href: '/admin/surety' },
-  { label: 'Modeling', href: '/admin/modeling' },
-  { label: 'Marketing', href: '/admin/marketing' },
-  { label: 'HFT', href: '/admin/hft' },
+  { label: 'Monitor', href: '/admin/monitor' },
+  { label: 'Bond Intel', href: '/admin/bond-intel' },
+  { label: 'Forensic', href: '/admin/forensic' },
   { label: 'Chain', href: '/admin/blockchain' },
-  { label: 'Docs', href: '/docs' },
+  { label: 'AI Tools', href: '/admin/ai-tools' },
+  { label: 'Licensing', href: '/admin/licensing' },
 ]
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

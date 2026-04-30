@@ -30,6 +30,7 @@ from routes.risk import risk_bp
 from routes.blockchain import blockchain_bp
 from routes.webhooks import webhooks_bp
 from routes.roots import roots_bp
+from routes.intelligence import intelligence_bp
 from services.fund_engine import FundEngine
 from services.deals import DealsRegistry
 from services.auth import AuthService
@@ -79,6 +80,7 @@ def create_app():
     app.register_blueprint(blockchain_bp, url_prefix="/api/blockchain")
     app.register_blueprint(webhooks_bp, url_prefix="/api/webhooks")
     app.register_blueprint(roots_bp, url_prefix="")
+    app.register_blueprint(intelligence_bp, url_prefix="")
 
     @app.get("/api/health")
     def health():
