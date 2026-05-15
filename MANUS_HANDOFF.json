@@ -1,0 +1,340 @@
+{
+  "project": "NEST Advisors — Institutional Bond Command Platform",
+  "version": "2.0",
+  "venture": "Arden Edge Capital × Soparrow Capital",
+  "ceo": "Sean Gilmore (18yr JPMorgan — top banker 11x nationally)",
+  "cofounder": "Josh Edwards (Soparrow Capital)",
+  "blueprint": "Jacaranda Trace PLOM (Series 2025, $231M, Florida LGFC)",
+
+  "stack": {
+    "backend": {
+      "framework": "Flask (Python)",
+      "port": 8000,
+      "directory": "nest/backend/",
+      "entry": "app.py",
+      "total_routes": 225,
+      "auth": "flask-jwt-extended (JWT in headers + cookies)",
+      "realtime": "Flask-SocketIO",
+      "ai_router": "services/ai_router.py (Power Strip — 10 plugins)",
+      "deploy": "Railway"
+    },
+    "frontend": {
+      "framework": "Vite + React 19 + TypeScript",
+      "port": 8100,
+      "directory": "nest/frontend-v2/",
+      "entry": "src/App.tsx",
+      "ui_library": "shadcn/ui (Radix + Tailwind)",
+      "animation": "framer-motion",
+      "routing": "wouter",
+      "data": "@tanstack/react-query (trpc.ts wrapper)",
+      "deploy": "Vercel"
+    }
+  },
+
+  "brand": {
+    "colors": {
+      "nest_void": "#030A06",
+      "nest_forest": "#0D2218",
+      "nest_green": "#1E4A2E",
+      "nest_pine": "#2D6B3D",
+      "nest_navy": "#060E1A",
+      "nest_gold": "#C4A048",
+      "nest_gold_hi": "#E8C87A",
+      "nest_sage": "#7A9A82",
+      "nest_cream": "#EDE8DC"
+    },
+    "fonts": {
+      "headings": "Cormorant Garamond (serif)",
+      "body": "Space Grotesk (sans)",
+      "data": "IBM Plex Mono (mono — ALL financial figures)"
+    },
+    "design_philosophy": "Bloomberg Terminal × Spider-Verse — cinematic dark institutional, neon dimensional accents, dense financial data. Every item has on/off glow state — active items shine bright with colored drop-shadows, inactive items dim but remain visible. Negative space darkens around off items, not the item itself.",
+    "hero": "NEST King chess piece / tree mark (NestMark.tsx — 4x4 lattice with gold conifer triangles, always centered prominently)",
+    "voice": "Jimmy Lee (JPMorgan legend) — direct, decisive, no hedging, no passive voice"
+  },
+
+  "architecture": {
+    "three_tiers": {
+      "tier1_low": "Power Strip Plugin Hub — universal API router (ai_router.py). 10 plugins: Claude, Claude Direct, DeepSeek, Grok, OpenAI, Bloomberg, Moody's, S&P, Meshy, Higgsfield. Retry with exponential backoff, health tracking, priority-based fallback chains.",
+      "tier2_mid": "NEST Modules — 15 agents + 6 calculation engines + all pillar services consume the Power Strip",
+      "tier3_high": "Backend → Frontend via REST API (api.ts client + trpc.ts React Query hooks)"
+    },
+    "six_pillars": {
+      "eagleeye": {
+        "purpose": "Deal Sourcing & Business Development",
+        "sub_tabs": ["All Signals", "M&A Intelligence", "Real Estate Development", "AI Scout"],
+        "component": "EagleEyeScoutDashboard.tsx",
+        "backend_routes": "/api/eagleeye/*",
+        "data": {
+          "ma_signals": {
+            "fields": ["id", "type (edgar_8k|edgar_sc13d|press_release|distress_signal)", "entity", "target", "ev_usd", "ebitda_usd", "multiple", "naics", "state", "score (0-100)", "status (hot|warm|review|passed|converted)"]
+          },
+          "re_signals": {
+            "fields": ["id", "type (ucc_filing|permit|title_transfer)", "entity", "detail", "amount_usd", "naics", "state", "county", "source", "score (0-100)", "status"]
+          },
+          "ai_scout": "Fires AI to find deals by NAICS + state filter, returns narrative results"
+        }
+      },
+      "roots": {
+        "purpose": "ALL pre-bond arrangement work — document vault, project readiness, surety prep, audit, feasibility, RMA spreads, credit memo, ESG",
+        "sub_tabs": ["Document Vault", "Project Readiness", "Surety Readiness", "RMA Benchmarks", "Credit Memo", "ESG Scoring"],
+        "component": "RootsWorkspace.tsx",
+        "backend_routes": "/api/rating-esg/*, /api/roots/*, /api/powerstrip/route (for credit memo generation)",
+        "data": {
+          "document_vault": {
+            "categories": ["Financial (6 items)", "Legal & Entity (7 items)", "Construction (6 items)", "Market & Feasibility (5 items)", "Insurance & Surety (6 items)"],
+            "item_fields": ["id", "label", "required (bool)", "status (uploaded|review|missing)"],
+            "total_items": 30,
+            "design_note": "Each item is a toggle button. Uploaded = emerald glow + checkmark. Review = amber glow + warning. Missing = dim with no glow. Required items show red 'required' badge when missing."
+          },
+          "project_readiness": {
+            "categories": ["Site (3)", "Design (3)", "Financial (4)", "Regulatory (3)", "Surety (3)", "Credit (4)"],
+            "total_items": 20,
+            "design_note": "Same on/off toggle pattern. Completed items glow emerald. Progress bar at top."
+          },
+          "surety_readiness": {
+            "provider": "Hylant Insurance (A+ rated, 8.5% premium, $500M max)",
+            "hylant_checklist": ["Appraisal", "Phase I Environmental", "GMP Contract", "Sponsor Financials", "Proforma", "Feasibility Study", "3C Analysis"],
+            "metrics": ["DSCR", "LTV", "LGD (bare/surety/dual-wrap/bank-conduit)"]
+          },
+          "rma_benchmarks": {
+            "naics_options": ["6232 Assisted Living", "6231 Nursing Care", "5311 Property Mgmt"],
+            "metrics": ["current_ratio", "debt_to_equity", "profit_margin_pct", "occupancy_pct", "revenue_per_unit", "opex_ratio"],
+            "comparison_fields": ["benchmark", "actual", "delta", "status (above|below)"]
+          },
+          "credit_memo": {
+            "inputs": "Deal parameters (NOI, tranches, coupons, TPC, appraised value, equity, EBITDA)",
+            "outputs": ["indicative_rating", "deal_score", "deal_score_grade", "DSCR", "LTV", "LTC", "AI-generated credit memo narrative"]
+          },
+          "esg": {
+            "pillars": ["Environmental (3 criteria)", "Social (3 criteria)", "Governance (3 criteria)"],
+            "output": ["composite_score (0-100)", "esg_grade (A-D)", "bond_impact (Green bond eligible | Standard bond)"]
+          }
+        }
+      },
+      "bond_desk": {
+        "purpose": "ALL things once it IS a bond — live trading floor. Structuring, monitoring, covenants, call/put, real-time MTM.",
+        "sub_tabs": ["Capital Stack", "Stress Test", "Rating Intelligence", "Covenant Monitor (TODO)", "Call/Put Signals (TODO)", "Live MTM (TODO)"],
+        "component": "StructuringStudio.tsx",
+        "backend_routes": "/api/engines/*, /api/bond-tools/*, /api/powerstrip/bond-pricing, /api/powerstrip/refi-signals",
+        "data": {
+          "capital_stack": {
+            "inputs": ["total_project_cost", "a_ltc_pct", "b_addon_pct", "maturity_years", "a_coupon_pct", "b_coupon_pct"],
+            "outputs": ["a_face_usd", "b_face_usd", "total_raise_usd", "cltv_pct", "project_proceeds_usd", "io_reserve_usd", "maturity_reserve_usd", "surety_premium_usd", "ae_fee_usd", "b_to_hft_usd", "annual_debt_service"]
+          },
+          "stress_test": {
+            "scenarios": ["base (0%)", "downside (-15% rev, +10% cost)", "stress (-25% rev, +20% cost)", "catastrophic (-40% rev)"],
+            "output_per_scenario": ["description", "dscr", "status (green|yellow|red|critical)"]
+          },
+          "rating": {
+            "outputs": ["indicative_rating", "deal_score", "deal_score_grade", "JPM benchmark comparison table", "AI rationale narrative"]
+          },
+          "design_note": "This should feel like a Bloomberg terminal or a trader's desk. Dense data, live-updating feel, dark with neon accents. Numbers in IBM Plex Mono gold."
+        }
+      },
+      "hawkeye": {
+        "purpose": "ALL things sales & placement — institutional buyer matching, AI teasers, order book, allocation",
+        "sub_tabs": ["Buyer Matching", "AI Teasers", "Order Book", "Allocation"],
+        "component": "HawkeyePlacementScout.tsx",
+        "backend_routes": "/api/hawkeye/*",
+        "data": {
+          "buyer_universe": {
+            "fields": ["id", "name", "type (family_office|endowment|credit_fund|pension|insurance|ria)", "aum_usd", "min_ticket_usd", "max_ticket_usd", "preferred_rating", "preferred_sectors[]", "yield_floor_pct", "relationship (existing|new)"],
+            "seeded_buyers": 6
+          },
+          "matching": {
+            "algorithm": "sector (40pts) + yield clearance (25pts) + rating comfort (20pts) + ticket fit (10pts) + relationship bonus (5pts)",
+            "output": ["match_score", "rationale[]", "suggested_ticket_usd"]
+          },
+          "order_book": {
+            "indication_fields": ["investorId", "investorName", "amount_usd", "tranche", "yield_target_pct", "status", "indicatedAt"],
+            "allocation": "Prioritize existing relationships, then largest indications. Returns coverage_pct."
+          },
+          "ai_teaser": "Full 200-word institutional investor teaser generated via Power Strip"
+        }
+      },
+      "nightvision": {
+        "purpose": "Compliance lair — monitors entire process end-to-end",
+        "sub_tabs": ["All Domains", "AI Compliance Scan"],
+        "component": "NightVisionComplianceLair.tsx",
+        "data": {
+          "regulatory_domains": [
+            {"name": "SEC / Securities", "checks": 5},
+            {"name": "FINRA", "checks": 3},
+            {"name": "BSA / AML", "checks": 4},
+            {"name": "State Licensing", "checks": 4},
+            {"name": "Tax / IRS", "checks": 3}
+          ],
+          "check_statuses": ["pass", "warning", "fail", "review", "na"],
+          "overall_score": "Percentage of applicable checks passing"
+        }
+      },
+      "atticus": {
+        "purpose": "In-house counsel — legal compliance, covenant review, bond counsel memos",
+        "sub_tabs": ["Compliance Checklist", "Covenant Monitor", "Legal Memo Generator"],
+        "component": "AtticusDashboard.tsx",
+        "data": {
+          "compliance_checklist": {
+            "categories": ["Securities (4)", "Bond (4)", "Entity (2)", "Insurance (2)", "Tax (2)", "Regulatory (2)"],
+            "total_items": 16,
+            "fields": ["id", "category", "item", "required", "completed (toggle)"]
+          },
+          "covenant_monitor": {
+            "sample_covenants": ["DSCR Minimum (1.5)", "LTV Maximum (75)", "Occupancy Floor (85)", "Debt/EBITDA Cap (6.5)", "Interest Coverage (2.25)", "Cash Reserve Ratio (0.25)"],
+            "output": ["compliant/breach per covenant", "headroom", "severity", "overall_status"]
+          }
+        }
+      }
+    },
+    "cross_cutting": {
+      "bernard": {
+        "purpose": "AI analyst concierge — floating on every page, action engine not chatbot",
+        "component": "BernardConcierge.tsx",
+        "personality": "Charlie Hunnam / Jax Teller — English geezer, bit rude, backhanded compliments, treats you like you're thick but secretly knows you're brilliant. Brainstorming superagent. Encouraging through tough love.",
+        "actions": ["credit analysis (fires Maxwell)", "buyer matching (fires Hawkeye)", "teaser generation", "deal scouting (fires EagleEye)", "ESG scoring", "climate assessment", "any AI conversation"],
+        "design_note": "Floating gold button bottom-right (NEST chess piece icon). Expands to chat panel. Dark panel with amber/gold accents."
+      },
+      "duckling_agent_flow": {
+        "purpose": "Mr. Beeks — animated Spider-Verse/Matrix power plant showing all agents feeding the NEST King",
+        "component": "DucklingAgentFlow.tsx",
+        "agents_outer_ring": ["EagleEye", "Merlin", "Aria", "LenderScout", "Prometheus", "Vector"],
+        "agents_inner_ring": ["Atlas", "Maxwell", "Sentinel", "Architect", "Pricing", "Sterling", "Morgan", "Apex"],
+        "center": "Mr. Beeks (NestMark chess piece) — glows brighter as agents complete, full golden glow when all online",
+        "animation": "Sequential agent activation with colored glows, energy pulse rings from center, each agent chip scales when running"
+      },
+      "climate": {
+        "component": "ClimateResilienceDashboard.tsx",
+        "states": ["FL", "CA", "TX", "AZ", "WA"],
+        "physical_risks": ["flood", "hurricane", "wildfire", "earthquake", "heat_stress"],
+        "outputs": ["resilience_score", "insurance_premium_multiplier", "rating_impact", "mitigations[]"]
+      },
+      "rating_hub": {
+        "component": "RatingIntelligenceHub.tsx",
+        "outputs": ["indicative_rating", "deal_score", "ESG grade", "JPM benchmark table", "AI rationale"]
+      },
+      "surety": {
+        "component": "SuretyUnderwritingDashboard.tsx",
+        "outputs": ["DSCR", "LTV", "LGD (4 tiers)", "Hylant submission readiness"]
+      },
+      "trustee": {
+        "component": "TrusteeManagementPanel.tsx",
+        "phases": ["pre-issuance (5 tasks)", "post-issuance (3 tasks)", "ongoing (2 tasks)"]
+      }
+    }
+  },
+
+  "backend_routes_summary": {
+    "/api/powerstrip/*": "7 routes — plugin status, routing, market rates, bond pricing, refi signals",
+    "/api/bond-workflow/*": "4 routes — workflow state, AI evaluation, checklist, phase management",
+    "/api/eagleeye/*": "7 routes — signals CRUD, AI scout, convert to deal, stats",
+    "/api/hawkeye/*": "7 routes — buyers, matching, teasers, order book, indications, allocation",
+    "/api/rating-esg/*": "8 routes — rating assess/compare, ESG score, climate, covenants, trustee, RMA",
+    "/api/engines/*": "20+ routes — modeling, maxwell, architect, pricing, sentinel, insurance, intake, audit, bridge, pipeline",
+    "/api/deals/*": "8 routes — CRUD, bonds, checklist, covenants, memos, refi",
+    "/api/roots/*": "7 routes — offerings, readiness, interest, submissions",
+    "/api/market/*": "2 routes — signals, latest",
+    "/api/agents/*": "3 routes — list, run, status",
+    "/api/fund/*": "6 routes — snapshot, simulate, distributions, yield, benchmark",
+    "total": 225
+  },
+
+  "frontend_components": {
+    "master_hub": "BondCommandCenter.tsx — 10-tab layout with NEST King hero",
+    "pillars": [
+      "EagleEyeScoutDashboard.tsx — M&A + Real Estate + AI Scout",
+      "RootsWorkspace.tsx — Doc vault, readiness, surety, RMA, credit memo, ESG",
+      "StructuringStudio.tsx — Bond desk structuring + stress + rating",
+      "HawkeyePlacementScout.tsx — Buyer matching, teasers, order book",
+      "NightVisionComplianceLair.tsx — End-to-end compliance",
+      "AtticusDashboard.tsx — In-house counsel"
+    ],
+    "supporting": [
+      "DucklingAgentFlow.tsx — Mr. Beeks animated agent power plant",
+      "BernardConcierge.tsx — Floating AI action engine",
+      "ClimateResilienceDashboard.tsx — Physical + transition risk",
+      "RatingIntelligenceHub.tsx — Maxwell + JPM + ESG composite",
+      "SuretyUnderwritingDashboard.tsx — Hylant surety + LGD",
+      "TrusteeManagementPanel.tsx — Pre/post-issuance tasks",
+      "RMABenchmarkUI.tsx — Industry benchmark comparison",
+      "BondStackDesk.tsx — Original bond tranche UI (still used in operations)",
+      "NestMark.tsx — King chess piece / tree SVG component"
+    ],
+    "infrastructure": [
+      "lib/api.ts — Full REST client (all endpoints)",
+      "lib/trpc.ts — React Query hooks (all modules)",
+      "App.tsx — Router + Bernard global mount"
+    ]
+  },
+
+  "agent_fleet": {
+    "total": 15,
+    "agents": [
+      {"name": "Vector", "role": "Call/put timing (14 market signals)"},
+      {"name": "Apex", "role": "Hedge desk (TLT puts, T-note futures, IRS)"},
+      {"name": "Morgan", "role": "Memo + content writer (Jimmy Lee tone)"},
+      {"name": "Sterling", "role": "Investor placement & CRM"},
+      {"name": "Merlin", "role": "M&A intelligence (NAICS scan, scoring)"},
+      {"name": "Maxwell", "role": "Credit analyst (DSCR, LTV, LGD)"},
+      {"name": "Prometheus", "role": "Feasibility + stress modeling"},
+      {"name": "Sentinel", "role": "Risk assessment (7 dimensions)"},
+      {"name": "SuretyScout", "role": "Surety/insurance engine"},
+      {"name": "LenderScout", "role": "Direct lender sourcing (800+ match)"},
+      {"name": "Bridge", "role": "Perm debt monitoring (18mo tracking)"},
+      {"name": "Auditor", "role": "Readiness gap scanner"},
+      {"name": "Aria", "role": "Client + BD outreach (follow-up sequences)"},
+      {"name": "BondOptimizer", "role": "Refi/restructure engine"},
+      {"name": "Chain", "role": "Blockchain execution (ERC-1400)"}
+    ]
+  },
+
+  "power_strip_plugins": [
+    {"name": "claude", "category": "ai", "endpoint": "openrouter", "priority": 1, "configured": true},
+    {"name": "claude_direct", "category": "ai", "endpoint": "anthropic", "priority": 2, "configured": true},
+    {"name": "deepseek", "category": "ai", "endpoint": "deepseek", "priority": 5, "configured": true},
+    {"name": "grok", "category": "market_data", "endpoint": "x.ai", "priority": 1, "configured": false},
+    {"name": "openai", "category": "ai", "endpoint": "openai", "priority": 50, "configured": false},
+    {"name": "bloomberg", "category": "market_data", "endpoint": "bloomberg", "priority": 1, "configured": false},
+    {"name": "moodys", "category": "ratings", "endpoint": "moodysanalytics", "priority": 1, "configured": false},
+    {"name": "sp_global", "category": "ratings", "endpoint": "spglobal", "priority": 2, "configured": false},
+    {"name": "meshy", "category": "creative", "endpoint": "meshy.ai", "priority": 1, "configured": false},
+    {"name": "higgsfield", "category": "creative", "endpoint": "higgsfield.ai", "priority": 1, "configured": false}
+  ],
+
+  "design_upgrade_brief": {
+    "overall": "5K Spider-Verse / Bloomberg terminal cinematic. Every module needs the on/off glow treatment — active items have colored drop-shadows and bright borders, inactive items dim to near-invisible but the item itself (text, icon) stays readable. Think power plant where each machine lights up when online.",
+    "eagleeye": "Deal sourcing war room. Signal cards with heat-map scoring (red=hot, amber=warm, dim=review). M&A signals with EDGAR filing icons. Real estate signals with building/permit icons. AI scout results in terminal-style output.",
+    "roots": "Document vault = file cabinet with glowing drawers. Each doc is a toggle card that illuminates when uploaded. Readiness checklist = mission control pre-flight. Progress bars everywhere. Surety section = insurance firm aesthetic.",
+    "bond_desk": "FULL Bloomberg terminal. Dense, dark, data-heavy. Live ticker feel. Numbers in gold IBM Plex Mono. Stress test results as colored status bars. Rating comparison as institutional table. Should feel like you're sitting at a trading desk.",
+    "hawkeye": "Sales floor energy. Buyer cards with match scores as circular gauges. Order book as a live table with running totals. Allocation waterfall visualization. Teaser output as a formatted document preview.",
+    "nightvision": "Green-on-black hacker aesthetic. Matrix vibes. Compliance checks as terminal lines with PASS/FAIL badges. Overall score as a large circular gauge.",
+    "atticus": "Law office meets terminal. Legal checklist as formal document-style cards. Covenant monitor as institutional data table. Legal memo as formatted document.",
+    "bernard": "Floating glass panel with subtle amber glow. Chat bubbles are dark with thin gold borders. Typing indicator is a pulsing amber dot. Suggested prompts as small capsule buttons.",
+    "mr_beeks": "The centerpiece. NEST King chess piece at center with radiating energy rings. Agents orbit in two rings. When pipeline runs, energy visibly flows from outer ring → inner ring → Beeks. Full golden supernova when all agents complete.",
+    "king_hero": "Always prominently centered at top of BondCommandCenter. Large (88px+). Golden glow shadow. 'NEST ADVISORS' in Cormorant Garamond below. Arden Edge Capital × Soparrow Capital subtitle."
+  },
+
+  "deployment": {
+    "github": {
+      "repo": "nest (to be pushed)",
+      "branches": "main"
+    },
+    "backend_deploy": {
+      "platform": "Railway",
+      "port": 8000,
+      "env_vars": ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "DEEPSEEK_API_KEY", "FRED_API_KEY", "JWT_SECRET_KEY", "SECRET_KEY"]
+    },
+    "frontend_deploy": {
+      "platform": "Vercel",
+      "port": 8100,
+      "env_vars": ["VITE_API_URL (points to Railway backend)"],
+      "framework": "Vite"
+    }
+  },
+
+  "known_issues": {
+    "jwt_config": "JWT_TOKEN_LOCATION was missing — added to config.py but needs server restart to take effect. Server process caching may require full kill/restart.",
+    "bond_desk_thin": "StructuringStudio needs expansion — covenant monitoring, call/put signals, live MTM, Bloomberg terminal density",
+    "hawkeye_deeper": "Needs Sterling CRM integration, Aria outreach sequences, book building waterfall viz",
+    "cinematic_glow": "On/off toggle lighting not yet implemented across all modules — design pass needed"
+  }
+}

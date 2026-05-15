@@ -31,6 +31,12 @@ from routes.blockchain import blockchain_bp
 from routes.webhooks import webhooks_bp
 from routes.roots import roots_bp
 from routes.intelligence import intelligence_bp
+from routes.engines_api import engines_bp
+from routes.powerstrip import powerstrip_bp
+from routes.bond_workflow import bond_workflow_bp
+from routes.eagleeye import eagleeye_bp
+from routes.hawkeye import hawkeye_bp
+from routes.rating_esg import rating_esg_bp
 from services.fund_engine import FundEngine
 from services.deals import DealsRegistry
 from services.auth import AuthService
@@ -39,12 +45,25 @@ from services.activity import ActivityFeed
 from agents.morgan import MorganAgent
 from agents.aria import AriaAgent
 from agents.sterling import SterlingAgent
+from agents.apex_agent import ApexAgent
+from agents.auditor import AuditorAgent
+from agents.bond_optimizer import BondOptimizerAgent
+from agents.bridge_agent import BridgeAgent
+from agents.chain_agent import ChainAgent
+from agents.lender_scout import LenderScoutAgent
+from agents.maxwell import MaxwellAgent
+from agents.merlin import MerlinAgent
+from agents.prometheus import PrometheusAgent
+from agents.quantum import QuantumAgent
+from agents.sentinel import SentinelAgent
+from agents.surety_scout import SuretyScoutAgent
+from agents.vector_agent import VectorAgent
 
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
-    CORS(app, resources={r"/api/*": {"origins": Config.FRONTEND_ORIGIN}})
+    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
     engine = FundEngine()
     app.config["FUND_ENGINE"] = engine
@@ -52,6 +71,19 @@ def create_app():
     app.config["MORGAN"] = MorganAgent()
     app.config["ARIA"] = AriaAgent()
     app.config["STERLING"] = SterlingAgent()
+    app.config["APEX"] = ApexAgent()
+    app.config["AUDITOR"] = AuditorAgent()
+    app.config["BOND_OPTIMIZER"] = BondOptimizerAgent()
+    app.config["BRIDGE"] = BridgeAgent()
+    app.config["CHAIN"] = ChainAgent()
+    app.config["LENDER_SCOUT"] = LenderScoutAgent()
+    app.config["MAXWELL"] = MaxwellAgent()
+    app.config["MERLIN"] = MerlinAgent()
+    app.config["PROMETHEUS"] = PrometheusAgent()
+    app.config["QUANTUM"] = QuantumAgent()
+    app.config["SENTINEL"] = SentinelAgent()
+    app.config["SURETY_SCOUT"] = SuretyScoutAgent()
+    app.config["VECTOR"] = VectorAgent()
     auth = AuthService()
     app.config["AUTH"] = auth
     app.config["DOCS"] = DocumentRegistry()
@@ -81,6 +113,12 @@ def create_app():
     app.register_blueprint(webhooks_bp, url_prefix="/api/webhooks")
     app.register_blueprint(roots_bp, url_prefix="")
     app.register_blueprint(intelligence_bp, url_prefix="")
+    app.register_blueprint(engines_bp, url_prefix="/api/engines")
+    app.register_blueprint(powerstrip_bp, url_prefix="/api/powerstrip")
+    app.register_blueprint(bond_workflow_bp, url_prefix="/api/bond-workflow")
+    app.register_blueprint(eagleeye_bp, url_prefix="/api/eagleeye")
+    app.register_blueprint(hawkeye_bp, url_prefix="/api/hawkeye")
+    app.register_blueprint(rating_esg_bp, url_prefix="/api/rating-esg")
 
     @app.get("/api/health")
     def health():
@@ -104,8 +142,8 @@ def create_app():
                 "active_deals": active,
                 "total_pipeline_usd": total_pipeline,
                 "bond_structures": bond_count,
-                "agents_active": 3,
-                "agents_total": 15,
+                "agents_active": 16,
+                "agents_total": 16,
             },
             "timestamp": __import__("datetime").datetime.utcnow().isoformat(),
         })

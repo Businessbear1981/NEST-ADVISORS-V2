@@ -18,3 +18,6 @@ class Config:
     DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "nest-dev-jwt-change-me")
     JWT_TTL_HOURS = int(os.getenv("JWT_TTL_HOURS", 24))
+    JWT_TOKEN_LOCATION = ["headers", "cookies"]
+    JWT_COOKIE_SAMESITE = "Lax"
+    JWT_ACCESS_TOKEN_EXPIRES = 86400  # 24 hours
