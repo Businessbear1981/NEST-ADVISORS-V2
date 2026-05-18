@@ -256,7 +256,7 @@ export default function Home() {
 
         <section className="min-w-0 px-4 py-4 sm:px-6 lg:px-8" id="command">
           <header className="relative overflow-hidden rounded-[1.6rem] border border-cyan-300/25 bg-black/45 p-4 shadow-[0_0_70px_rgba(34,211,238,0.10)] sm:p-6">
-            <img src={HERO} alt="Institutional terminal texture" className="absolute inset-0 h-full w-full object-cover opacity-[0.18] mix-blend-screen" />
+            {/* Hero texture removed — no image asset exists yet */}
             <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(2,6,23,0.55),rgba(2,6,23,0.88)_46%,rgba(2,6,23,0.62))]" />
             <div className="absolute -right-20 -top-28 h-72 w-72 rounded-full border border-cyan-300/30 shadow-[0_0_80px_rgba(34,211,238,0.25)]" />
             <div className="absolute -right-6 top-14 h-48 w-48 rounded-full border border-amber-300/35 shadow-[0_0_70px_rgba(251,191,36,0.18)]" />
