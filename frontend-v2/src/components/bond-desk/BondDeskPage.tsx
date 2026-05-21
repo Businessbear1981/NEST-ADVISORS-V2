@@ -4,6 +4,7 @@ import DealPulseTicker from "./DealPulseTicker";
 import DealPipelineDashboard from "./DealPipelineDashboard";
 import BondStructuringEngine from "./BondStructuringEngine";
 import CMBSStackingDesk from "./CMBSStackingDesk";
+import CounterpartySandbox from "./CounterpartySandbox";
 
 export default function BondDeskPage() {
   return (
@@ -49,6 +50,11 @@ export default function BondDeskPage() {
           {/* Module 2: Bond Structuring Engine */}
           <div className="mb-8">
             <BondStructuringEngine />
+          </div>
+
+          {/* Module 4: Counterparty Sandboxes */}
+          <div className="mb-6">
+            <CounterpartySandbox />
           </div>
 
           {/* Divider */}
