@@ -1,10 +1,11 @@
 """
 NEST NightVision Routes — Compliance Intelligence Layer.
 Real rule-based compliance scanning for institutional bond deals.
+from services.auth import require_auth
 SEC, FINRA/MSRB, BSA/AML, State Licensing, Tax/IRS.
 """
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from services.auth import require_auth, current_user
 from datetime import datetime
 
 nightvision_bp = Blueprint("nightvision", __name__)
@@ -26,7 +27,7 @@ from services.compliance_engine import compliance_engine, run_compliance_scan, g
 # ── COMPLIANCE SCAN ──────────────────────────────────────────────
 
 @nightvision_bp.route("/scan", methods=["POST"])
-@jwt_required()
+@require_auth()
 def compliance_scan():
     """
     Run a full compliance scan against deal data.
@@ -54,7 +55,7 @@ def compliance_scan():
 
 
 @nightvision_bp.route("/scan/<deal_id>", methods=["POST"])
-@jwt_required()
+@require_auth()
 def compliance_scan_by_deal(deal_id):
     """
     Run compliance scan for an existing deal by ID.
@@ -112,7 +113,7 @@ def check_definitions_by_category(category):
 # ── QUICK STATUS ─────────────────────────────────────────────────
 
 @nightvision_bp.route("/status", methods=["GET"])
-@jwt_required()
+@require_auth()
 def nightvision_status():
     """Quick status endpoint — returns engine version and category summary."""
     return ok({
@@ -131,7 +132,7 @@ def nightvision_status():
 # ── DEAL GATE CHECK ─────────────────────────────────────────────
 
 @nightvision_bp.route("/gate-check", methods=["POST"])
-@jwt_required()
+@require_auth()
 def gate_check():
     """
     Quick gate check — returns only blockers and whether the deal can proceed.

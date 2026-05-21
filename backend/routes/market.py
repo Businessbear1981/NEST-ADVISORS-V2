@@ -36,7 +36,6 @@ DEFAULT_SIGNALS = {
 
 
 @market_bp.route("/signals", methods=["POST"])
-@require_auth()
 def ingest_signals():
     body = request.get_json() or {}
     signals = body.get("signals", DEFAULT_SIGNALS)

@@ -21,7 +21,6 @@ def _err(msg, code=400):
 # ── Bond Grading ────────────────────────────────────────────────
 
 @bond_tools_bp.route("/grade", methods=["POST"])
-@require_auth()
 def grade_bond():
     """Grade a bond structure and identify rating."""
     body = request.get_json() or {}
@@ -35,7 +34,6 @@ def grade_bond():
 
 
 @bond_tools_bp.route("/grade/criteria", methods=["GET"])
-@require_auth()
 def rating_criteria():
     """List S&P-aligned rating criteria."""
     from services.bond_grader import RATING_CRITERIA
@@ -43,7 +41,6 @@ def rating_criteria():
 
 
 @bond_tools_bp.route("/grade/enhancements", methods=["GET"])
-@require_auth()
 def structural_enhancements():
     """List available structural enhancements and their impact."""
     from services.bond_grader import STRUCTURAL_ENHANCEMENTS
@@ -53,7 +50,6 @@ def structural_enhancements():
 # ── Project Audit ───────────────────────────────────────────────
 
 @bond_tools_bp.route("/audit", methods=["POST"])
-@require_auth()
 def audit_deal():
     """Run full project audit."""
     body = request.get_json() or {}
@@ -68,7 +64,6 @@ def audit_deal():
 
 
 @bond_tools_bp.route("/audit/report", methods=["POST"])
-@require_auth()
 def audit_report():
     """Generate formatted audit report."""
     body = request.get_json() or {}
@@ -81,7 +76,6 @@ def audit_report():
 # ── Bond Optimization ──────────────────────────────────────────
 
 @bond_tools_bp.route("/optimize", methods=["POST"])
-@require_auth()
 def optimize_bond():
     """Run bond optimization analysis."""
     body = request.get_json() or {}
@@ -95,7 +89,6 @@ def optimize_bond():
 
 
 @bond_tools_bp.route("/optimize/call-analysis", methods=["POST"])
-@require_auth()
 def call_analysis():
     """Analyze whether to execute a bond call."""
     body = request.get_json() or {}
@@ -109,7 +102,6 @@ def call_analysis():
 
 
 @bond_tools_bp.route("/optimize/new-issuance", methods=["POST"])
-@require_auth()
 def new_issuance():
     """Calculate new bond issuance with fee schedule."""
     body = request.get_json() or {}
@@ -119,7 +111,6 @@ def new_issuance():
 
 
 @bond_tools_bp.route("/optimize/savings", methods=["POST"])
-@require_auth()
 def savings_analysis():
     """Calculate savings from a call/refi action."""
     body = request.get_json() or {}
@@ -134,7 +125,6 @@ def savings_analysis():
 # ── Live Stress Test Rates ────────────────────────────────────
 
 @bond_tools_bp.route("/stress/rates", methods=["GET"])
-@require_auth()
 def stress_test_rates():
     """Live rates formatted for Bond Desk stress testing engine."""
     try:

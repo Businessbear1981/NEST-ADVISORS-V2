@@ -1,6 +1,6 @@
 """NEST Intelligence Routes — Bond Intel + Monitor + AI Router"""
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from services.auth import require_auth, current_user
 from datetime import datetime
 
 intelligence_bp = Blueprint("intelligence", __name__)
@@ -69,14 +69,14 @@ def hundred_pct():
 
 
 @intelligence_bp.route("/api/bond-intel/rating-readiness", methods=["POST"])
-@jwt_required()
+@require_auth()
 def rating_readiness():
     body = request.get_json() or {}
     return ok(bond_intel.assess_rating_readiness(body))
 
 
 @intelligence_bp.route("/api/bond-intel/financing-path", methods=["POST"])
-@jwt_required()
+@require_auth()
 def financing_path():
     body = request.get_json() or {}
     return ok(bond_intel.get_financing_path(
@@ -87,7 +87,7 @@ def financing_path():
 
 
 @intelligence_bp.route("/api/bond-intel/milestone-status", methods=["POST"])
-@jwt_required()
+@require_auth()
 def milestone_status():
     body = request.get_json() or {}
     return ok(bond_intel.get_milestone_status(
@@ -101,7 +101,7 @@ def milestone_status():
 # ── PROJECT MONITOR ───────────────────────────────────────────
 
 @intelligence_bp.route("/api/monitor/projects", methods=["POST"])
-@jwt_required()
+@require_auth()
 def create_project():
     body = request.get_json() or {}
     if not body.get("deal_id"):
@@ -110,20 +110,20 @@ def create_project():
 
 
 @intelligence_bp.route("/api/monitor/projects/<deal_id>", methods=["GET"])
-@jwt_required()
+@require_auth()
 def get_dashboard(deal_id):
     return ok(project_monitor.get_dashboard(deal_id))
 
 
 @intelligence_bp.route("/api/monitor/projects/<deal_id>/draw", methods=["POST"])
-@jwt_required()
+@require_auth()
 def record_draw(deal_id):
     body = request.get_json() or {}
     return ok(project_monitor.record_draw(deal_id, body))
 
 
 @intelligence_bp.route("/api/monitor/projects/<deal_id>/presale", methods=["POST"])
-@jwt_required()
+@require_auth()
 def record_presale(deal_id):
     body = request.get_json() or {}
     return ok(project_monitor.record_presale(
@@ -134,7 +134,7 @@ def record_presale(deal_id):
 
 
 @intelligence_bp.route("/api/monitor/projects/<deal_id>/alert/<alert_id>/ack", methods=["PATCH"])
-@jwt_required()
+@require_auth()
 def ack_alert(deal_id, alert_id):
     p = project_monitor.projects.get(deal_id)
     if not p:
@@ -149,7 +149,7 @@ def ack_alert(deal_id, alert_id):
 # ── AI ROUTER ─────────────────────────────────────────────────
 
 @intelligence_bp.route("/api/ai/status", methods=["GET"])
-@jwt_required()
+@require_auth()
 def ai_status():
     return ok(ai_router.get_tool_status())
 
@@ -161,7 +161,7 @@ def market_rates():
 
 
 @intelligence_bp.route("/api/ai/route", methods=["POST"])
-@jwt_required()
+@require_auth()
 def route_task():
     body = request.get_json() or {}
     if not body.get("prompt"):
@@ -177,7 +177,7 @@ def route_task():
 # ── PHASE BOND ENGINE ─────────────────────────────────────────
 
 @intelligence_bp.route("/api/phase-bonds/structure", methods=["POST"])
-@jwt_required()
+@require_auth()
 def phase_bond_structure():
     body = request.get_json() or {}
     if not body.get("total_project_cost_usd"):
@@ -196,7 +196,7 @@ def phase_bond_phases():
 
 
 @intelligence_bp.route("/api/phase-bonds/economics", methods=["POST"])
-@jwt_required()
+@require_auth()
 def phase_bond_economics():
     body = request.get_json() or {}
     structure = phase_bond_engine.structure_phase_bonds(
@@ -208,7 +208,7 @@ def phase_bond_economics():
 
 
 @intelligence_bp.route("/api/phase-bonds/calls-puts", methods=["POST"])
-@jwt_required()
+@require_auth()
 def phase_bond_calls_puts():
     body = request.get_json() or {}
     structure = phase_bond_engine.structure_phase_bonds(
@@ -232,7 +232,7 @@ def ma_bond_rules():
 
 
 @intelligence_bp.route("/api/ma-bonds/structure", methods=["POST"])
-@jwt_required()
+@require_auth()
 def ma_bond_structure():
     body = request.get_json() or {}
     company = body.get("company", {})
@@ -243,7 +243,7 @@ def ma_bond_structure():
 
 
 @intelligence_bp.route("/api/ma-bonds/pik-analysis", methods=["POST"])
-@jwt_required()
+@require_auth()
 def ma_pik_analysis():
     body = request.get_json() or {}
     return ok(ma_bond_engine.model_pik_vs_cash_pay(
@@ -255,7 +255,7 @@ def ma_pik_analysis():
 
 
 @intelligence_bp.route("/api/ma-bonds/balance-sheet", methods=["POST"])
-@jwt_required()
+@require_auth()
 def ma_balance_sheet():
     body = request.get_json() or {}
     return ok(ma_bond_engine.balance_sheet_analysis(
@@ -273,7 +273,7 @@ def audit_standards():
 
 
 @intelligence_bp.route("/api/audit/run", methods=["POST"])
-@jwt_required()
+@require_auth()
 def run_audit():
     body = request.get_json() or {}
     return ok(forensic_audit.run_full_audit(
@@ -284,7 +284,7 @@ def run_audit():
 
 
 @intelligence_bp.route("/api/audit/sources-uses", methods=["POST"])
-@jwt_required()
+@require_auth()
 def audit_sources_uses():
     body = request.get_json() or {}
     return ok(forensic_audit.validate_sources_uses(
@@ -294,7 +294,7 @@ def audit_sources_uses():
 
 
 @intelligence_bp.route("/api/audit/assumptions", methods=["POST"])
-@jwt_required()
+@require_auth()
 def audit_assumptions():
     body = request.get_json() or {}
     return ok(forensic_audit.validate_assumptions(
@@ -304,7 +304,7 @@ def audit_assumptions():
 
 
 @intelligence_bp.route("/api/audit/rating-presentation", methods=["POST"])
-@jwt_required()
+@require_auth()
 def audit_rating_presentation():
     body = request.get_json() or {}
     return ok(forensic_audit.rating_agency_presentation(
@@ -315,7 +315,7 @@ def audit_rating_presentation():
 
 
 @intelligence_bp.route("/api/audit/bank-presentation", methods=["POST"])
-@jwt_required()
+@require_auth()
 def audit_bank_presentation():
     body = request.get_json() or {}
     return ok(forensic_audit.bank_presentation(
@@ -328,7 +328,7 @@ def audit_bank_presentation():
 # ── BRIDGE FUND ───────────────────────────────────────────────
 
 @intelligence_bp.route("/api/bridge/underwrite", methods=["POST"])
-@jwt_required()
+@require_auth()
 def bridge_underwrite():
     body = request.get_json() or {}
     if not body.get("amount_usd"):
@@ -341,7 +341,7 @@ def bridge_underwrite():
 
 
 @intelligence_bp.route("/api/bridge/equity-value", methods=["POST"])
-@jwt_required()
+@require_auth()
 def bridge_equity_value():
     body = request.get_json() or {}
     return ok(bridge_fund.calculate_equity_value(
@@ -352,13 +352,13 @@ def bridge_equity_value():
 
 
 @intelligence_bp.route("/api/bridge/portfolio", methods=["GET"])
-@jwt_required()
+@require_auth()
 def bridge_portfolio():
     return ok(bridge_fund.portfolio_dashboard())
 
 
 @intelligence_bp.route("/api/bridge/<loan_id>/repay", methods=["POST"])
-@jwt_required()
+@require_auth()
 def bridge_repay(loan_id):
     body = request.get_json() or {}
     return ok(bridge_fund.repay_loan(loan_id, body.get("repayment_source", "bond_proceeds")))
@@ -373,25 +373,25 @@ def licensing_roadmap():
 
 
 @intelligence_bp.route("/api/licensing/status", methods=["GET"])
-@jwt_required()
+@require_auth()
 def licensing_status():
     return ok(licensing_service.get_current_status())
 
 
 @intelligence_bp.route("/api/licensing/fees", methods=["GET"])
-@jwt_required()
+@require_auth()
 def licensing_fees():
     return ok(licensing_service.get_fee_structure())
 
 
 @intelligence_bp.route("/api/licensing/compliance-calendar", methods=["GET"])
-@jwt_required()
+@require_auth()
 def compliance_calendar():
     return ok(licensing_service.get_compliance_calendar())
 
 
 @intelligence_bp.route("/api/licensing/rent-vs-own", methods=["POST"])
-@jwt_required()
+@require_auth()
 def rent_vs_own():
     body = request.get_json() or {}
     return ok(licensing_service.calculate_rent_vs_own(
@@ -400,7 +400,7 @@ def rent_vs_own():
 
 
 @intelligence_bp.route("/api/licensing/finra-letter", methods=["POST"])
-@jwt_required()
+@require_auth()
 def finra_letter():
     letter = licensing_service.generate_finra_sponsorship_request()
     return ok({"letter": letter})
@@ -415,13 +415,13 @@ def exam_detail(exam_name):
 # ── INGESTION LAYER (Central Nervous System) ──────────────────
 
 @intelligence_bp.route("/api/nervous-system/dashboard", methods=["GET"])
-@jwt_required()
+@require_auth()
 def nervous_system_dashboard():
     return ok(ingestion_layer.get_dashboard())
 
 
 @intelligence_bp.route("/api/nervous-system/ingest", methods=["POST"])
-@jwt_required()
+@require_auth()
 def nervous_system_ingest():
     body = request.get_json() or {}
     if not body.get("prompt"):
@@ -435,7 +435,7 @@ def nervous_system_ingest():
 
 
 @intelligence_bp.route("/api/nervous-system/multi-ingest", methods=["POST"])
-@jwt_required()
+@require_auth()
 def nervous_system_multi():
     body = request.get_json() or {}
     if not body.get("prompt"):
@@ -448,7 +448,7 @@ def nervous_system_multi():
 
 
 @intelligence_bp.route("/api/nervous-system/plugin/<plugin_name>", methods=["GET"])
-@jwt_required()
+@require_auth()
 def nervous_system_plugin(plugin_name):
     plugin = ingestion_layer.get_plugin(plugin_name)
     if not plugin:
@@ -460,7 +460,7 @@ def nervous_system_plugin(plugin_name):
 
 
 @intelligence_bp.route("/api/nervous-system/proofread", methods=["POST"])
-@jwt_required()
+@require_auth()
 def nervous_system_proofread():
     body = request.get_json() or {}
     if not body.get("text"):
@@ -474,7 +474,7 @@ def nervous_system_proofread():
 
 
 @intelligence_bp.route("/api/nervous-system/video", methods=["POST"])
-@jwt_required()
+@require_auth()
 def nervous_system_video():
     body = request.get_json() or {}
     if not body.get("prompt"):
@@ -489,7 +489,7 @@ def nervous_system_video():
 
 
 @intelligence_bp.route("/api/nervous-system/log", methods=["GET"])
-@jwt_required()
+@require_auth()
 def nervous_system_log():
     limit = request.args.get("limit", 50, type=int)
     return ok(ingestion_layer.call_log[-limit:])
@@ -568,7 +568,7 @@ def data_brokercheck():
 
 
 @intelligence_bp.route("/api/data/property", methods=["POST"])
-@jwt_required()
+@require_auth()
 def data_property():
     body = request.get_json() or {}
     attom = ingestion_layer.get_plugin("attom")
