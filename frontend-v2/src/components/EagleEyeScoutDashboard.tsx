@@ -60,6 +60,51 @@ function SignalCard({
               <span className="text-red-300">Gen {maSignal.ownership.generation}</span>
             )}
           </div>
+          {/* M&A dimension badges */}
+          {isMA && maSignal && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {maSignal.announcedEquityRaise && (
+                <span className="rounded-full border border-red-400/40 bg-red-500/15 px-2 py-0.5 font-mono text-[0.52rem] font-semibold uppercase text-red-300">
+                  Equity Raise
+                </span>
+              )}
+              {maSignal.syndicatedLoanSignal === "hot" && (
+                <span className="rounded-full border border-amber-400/40 bg-amber-400/15 px-2 py-0.5 font-mono text-[0.52rem] font-semibold uppercase text-amber-300">
+                  Syndicated
+                </span>
+              )}
+              {maSignal.syndicatedLoanSignal !== "hot" && maSignal.hasSyndicatedDebt && (
+                <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 font-mono text-[0.52rem] font-semibold uppercase text-amber-400">
+                  Syndicated
+                </span>
+              )}
+              {maSignal.recentRefinancing && (
+                <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-2 py-0.5 font-mono text-[0.52rem] font-semibold uppercase text-amber-300">
+                  Refi
+                </span>
+              )}
+              {maSignal.marketGrowthPct != null && maSignal.marketGrowthPct > 10 && (
+                <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 font-mono text-[0.52rem] font-semibold text-emerald-300">
+                  {maSignal.marketGrowthPct}% CAGR
+                </span>
+              )}
+              {maSignal.marketGrowthPct != null && maSignal.marketGrowthPct >= 5 && maSignal.marketGrowthPct <= 10 && (
+                <span className="rounded-full border border-amber-400/25 bg-amber-400/8 px-2 py-0.5 font-mono text-[0.52rem] font-semibold text-amber-400">
+                  {maSignal.marketGrowthPct}% CAGR
+                </span>
+              )}
+              {maSignal.revenueStreams != null && (
+                <span className="rounded-full border border-slate-400/25 bg-slate-500/10 px-2 py-0.5 font-mono text-[0.52rem] text-slate-400">
+                  {maSignal.revenueStreams} streams
+                </span>
+              )}
+              {maSignal.techEnabled && (
+                <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 font-mono text-[0.52rem] font-semibold uppercase text-cyan-300">
+                  Tech-Enabled
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className="text-right space-y-1">
           <p className="font-mono text-lg font-semibold text-amber-100">
