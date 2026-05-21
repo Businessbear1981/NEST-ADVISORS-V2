@@ -1,6 +1,7 @@
 import { DealStateProvider } from "@/contexts/DealStateContext";
 import { BernardProvider } from "@/contexts/BernardContext";
 import DealPulseTicker from "./DealPulseTicker";
+import DealPipelineDashboard from "./DealPipelineDashboard";
 import BondStructuringEngine from "./BondStructuringEngine";
 import CMBSStackingDesk from "./CMBSStackingDesk";
 
@@ -38,6 +39,11 @@ export default function BondDeskPage() {
           {/* Module 1: Deal Pulse Ticker */}
           <div className="mb-6">
             <DealPulseTicker />
+          </div>
+
+          {/* Deal Pipeline */}
+          <div className="mb-6">
+            <DealPipelineDashboard />
           </div>
 
           {/* Module 2: Bond Structuring Engine */}
