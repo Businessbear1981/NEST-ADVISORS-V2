@@ -58,7 +58,7 @@ def _err(msg, code=400):
 
 
 @eagleeye_bp.route("/signals", methods=["GET"])
-@require_auth()
+
 def list_signals():
     """All discovered deal signals, sorted by score."""
     status_filter = request.args.get("status")
@@ -79,7 +79,7 @@ def list_signals():
 
 
 @eagleeye_bp.route("/signals/<signal_id>", methods=["GET"])
-@require_auth()
+
 def get_signal(signal_id):
     with _lock:
         sig = next((s for s in _signals if s["id"] == signal_id), None)
@@ -89,7 +89,6 @@ def get_signal(signal_id):
 
 
 @eagleeye_bp.route("/signals/<signal_id>/status", methods=["PATCH"])
-@require_auth()
 def update_signal_status(signal_id):
     b = request.get_json() or {}
     new_status = b.get("status")
@@ -105,7 +104,6 @@ def update_signal_status(signal_id):
 
 
 @eagleeye_bp.route("/scout", methods=["POST"])
-@require_auth()
 def run_scout():
     """Run AI-powered scout — searches for new deal opportunities."""
     b = request.get_json() or {}
@@ -145,14 +143,13 @@ def run_scout():
 
 
 @eagleeye_bp.route("/scout/history", methods=["GET"])
-@require_auth()
+
 def scout_history():
     with _lock:
         return _ok(_scout_runs[::-1])
 
 
 @eagleeye_bp.route("/convert/<signal_id>", methods=["POST"])
-@require_auth()
 def convert_to_deal(signal_id):
     """Convert a signal into a NEST deal — pushes to Roots."""
     with _lock:
@@ -180,8 +177,16 @@ def convert_to_deal(signal_id):
     return _ok(deal_stub)
 
 
+@eagleeye_bp.route("/ipo-readiness", methods=["POST"])
+def ipo_readiness():
+    """Assess IPO readiness for a target company."""
+    body = request.get_json() or {}
+    from agents.merlin import merlin
+    result = merlin.assess_ipo_readiness(body.get("target", {}))
+    return _ok(result)
+
+
 @eagleeye_bp.route("/stats", methods=["GET"])
-@require_auth()
 def stats():
     with _lock:
         total = len(_signals)

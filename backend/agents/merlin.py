@@ -2,12 +2,13 @@
 MerlinAgent — M&A intelligence, target scoring, and deal structuring.
 
 Responsibilities:
-  - Score acquisition targets across 8 weighted dimensions
+  - Score acquisition targets across 12 weighted dimensions
   - Run 3-level game theory analysis on targets
   - Build business plans via Claude API
   - Model IRR across 3x3 scenario matrix
   - Scan EDGAR for acquisition targets by NAICS
   - Orchestrate full deal analysis pipeline
+  - Assess IPO readiness across 8 gateway dimensions
 """
 import math
 import random
@@ -82,33 +83,43 @@ NAICS_PRIORITY = {
 class MerlinAgent:
     """M&A acquisition intelligence agent."""
 
-    # Scoring dimensions and weights
+    # Scoring dimensions and weights (12 dimensions, rebalanced to 100%)
+    # Original 8 dimensions reduced proportionally (×0.72) to make room for 4 new ones
     SCORING_WEIGHTS = {
-        "revenue_quality": 0.18,
-        "margin_profile": 0.15,
-        "owner_dependency": 0.14,
-        "customer_concentration": 0.12,
-        "growth_trajectory": 0.10,
-        "defensibility": 0.10,
-        "workforce_stability": 0.11,
-        "asset_quality": 0.10,
+        "revenue_quality": 0.13,
+        "margin_profile": 0.11,
+        "owner_dependency": 0.10,
+        "customer_concentration": 0.09,
+        "growth_trajectory": 0.07,
+        "defensibility": 0.07,
+        "workforce_stability": 0.08,
+        "asset_quality": 0.07,
+        # New dimensions
+        "regional_national_growth": 0.08,
+        "revenue_diversification": 0.07,
+        "scalability": 0.08,
+        "syndicated_loan_signals": 0.05,
     }
 
     def __init__(self):
         self.analysis_cache = {}
 
     # ------------------------------------------------------------------ #
-    #  TARGET SCORING (8 dimensions)                                      #
+    #  TARGET SCORING (12 dimensions)                                     #
     # ------------------------------------------------------------------ #
 
     def score_target(self, target: dict) -> dict:
         """
-        Score an acquisition target on 8 weighted dimensions (0-100 each).
+        Score an acquisition target on 12 weighted dimensions (0-100 each).
 
         target: {name, revenue, ebitda, ebitda_margin, revenue_growth,
                  top_customer_pct, owner_involved, employee_tenure_avg,
                  recurring_revenue_pct, asset_age_years, patents, contracts,
-                 sector, naics}
+                 sector, naics,
+                 market_growth_pct, regional_growth_factor,
+                 revenue_streams, geographic_markets,
+                 tech_enabled, repeatable_process, capacity_utilization_pct,
+                 has_syndicated_debt, recent_refinancing, announced_equity_raise}
         """
         scores = {}
 
@@ -177,6 +188,59 @@ class MerlinAgent:
             scores["asset_quality"] = 45
         else:
             scores["asset_quality"] = 25
+
+        # 9. Regional/National Growth — is the target in a growing market?
+        market_growth = target.get("market_growth_pct", 5.0)
+        regional_factor = target.get("regional_growth_factor", 1.0)
+        effective_growth = market_growth * regional_factor
+        if effective_growth >= 15:
+            scores["regional_national_growth"] = 95
+        elif effective_growth >= 10:
+            scores["regional_national_growth"] = 80
+        elif effective_growth >= 5:
+            scores["regional_national_growth"] = 60
+        elif effective_growth >= 0:
+            scores["regional_national_growth"] = 40
+        else:
+            scores["regional_national_growth"] = 15
+
+        # 10. Revenue Diversification — how diversified is the revenue?
+        rev_streams = target.get("revenue_streams", 1)
+        geo_markets = target.get("geographic_markets", 1)
+        if rev_streams >= 5 and geo_markets >= 3:
+            scores["revenue_diversification"] = 90
+        elif rev_streams >= 3:
+            scores["revenue_diversification"] = 70
+        elif rev_streams >= 2:
+            scores["revenue_diversification"] = 50
+        else:
+            scores["revenue_diversification"] = 25
+
+        # 11. Scalability — can this business scale without proportional cost increase?
+        tech_enabled = target.get("tech_enabled", False)
+        repeatable = target.get("repeatable_process", False)
+        cap_util = target.get("capacity_utilization_pct", 80.0)
+        if tech_enabled and repeatable and cap_util < 70:
+            scores["scalability"] = 95
+        elif tech_enabled and repeatable:
+            scores["scalability"] = 80
+        elif repeatable:
+            scores["scalability"] = 60
+        else:
+            scores["scalability"] = 30
+
+        # 12. Syndicated Loan Signals — evidence of active syndicated lending / refinancing
+        has_syndicated = target.get("has_syndicated_debt", False)
+        recent_refi = target.get("recent_refinancing", False)
+        equity_raise = target.get("announced_equity_raise", False)
+        if equity_raise:
+            scores["syndicated_loan_signals"] = 95  # hot signal
+        elif recent_refi:
+            scores["syndicated_loan_signals"] = 75
+        elif has_syndicated:
+            scores["syndicated_loan_signals"] = 60
+        else:
+            scores["syndicated_loan_signals"] = 30
 
         # Weighted composite
         composite = sum(
@@ -481,6 +545,124 @@ Provide:
                 pass
 
         return result
+
+
+    # ------------------------------------------------------------------ #
+    #  IPO READINESS ASSESSMENT                                           #
+    # ------------------------------------------------------------------ #
+
+    def assess_ipo_readiness(self, target: dict) -> dict:
+        """Assess target's readiness for IPO based on institutional benchmarks."""
+        gates = {}
+
+        revenue = target.get("revenue_usd", 0)
+        ebitda = target.get("ebitda_usd", 0)
+        margin = target.get("ebitda_margin_pct", 0)
+        growth = target.get("revenue_growth_pct", 0)
+
+        # 1. Revenue Scale (min $100M for serious IPO, $250M+ ideal)
+        gates["revenue_scale"] = {
+            "score": min(100, max(0, int((revenue / 250_000_000) * 100))),
+            "benchmark": "$250M+ revenue (ideal), $100M minimum",
+            "current": f"${revenue / 1e6:.0f}M",
+            "gap": f"${max(0, (100_000_000 - revenue)) / 1e6:.0f}M to minimum" if revenue < 100_000_000 else "Meets minimum",
+        }
+
+        # 2. Revenue Growth (20%+ YoY for growth IPO, 10%+ for value)
+        gates["revenue_growth"] = {
+            "score": min(100, max(0, int(growth * 4))),  # 25% growth = 100
+            "benchmark": "20%+ YoY (growth), 10%+ (value)",
+            "current": f"{growth:.1f}%",
+            "gap": f"Need {max(0, 10 - growth):.1f}pp more" if growth < 10 else "On track",
+        }
+
+        # 3. Profitability (positive EBITDA, 15%+ margin preferred)
+        gates["profitability"] = {
+            "score": min(100, max(0, int(margin * 5))),  # 20% margin = 100
+            "benchmark": "EBITDA positive, 15%+ margin preferred",
+            "current": f"{margin:.1f}% EBITDA margin",
+            "gap": "Needs profitability" if margin <= 0 else f"{'Strong' if margin >= 15 else 'Improving'}",
+        }
+
+        # 4. Audit Readiness (SOX compliance, Big 4 auditor, 3yr audited financials)
+        has_auditor = target.get("has_big4_auditor", False)
+        years_audited = target.get("years_audited", 0)
+        gates["audit_readiness"] = {
+            "score": (40 if has_auditor else 0) + min(60, years_audited * 20),
+            "benchmark": "Big 4 auditor, 3+ years audited financials, SOX-ready",
+            "current": f"{'Big 4' if has_auditor else 'No Big 4'}, {years_audited}yr audited",
+            "gap": "Need Big 4 auditor" if not has_auditor else ("Need 3yr history" if years_audited < 3 else "Ready"),
+        }
+
+        # 5. Corporate Governance (independent board, committees, C-suite depth)
+        board_independent = target.get("independent_board_members", 0)
+        has_cfo = target.get("has_experienced_cfo", False)
+        gates["governance"] = {
+            "score": min(100, board_independent * 25 + (30 if has_cfo else 0)),
+            "benchmark": "3+ independent directors, experienced CFO, audit/comp committees",
+            "current": f"{board_independent} independent directors, {'CFO' if has_cfo else 'no CFO'}",
+            "gap": f"Need {max(0, 3 - board_independent)} more independent directors" if board_independent < 3 else "Strong",
+        }
+
+        # 6. Market Position (TAM, market share, competitive moat)
+        tam = target.get("total_addressable_market_usd", 0)
+        market_share = target.get("market_share_pct", 0)
+        gates["market_position"] = {
+            "score": min(100, int((tam / 5_000_000_000) * 50) + int(market_share * 5)),
+            "benchmark": "$1B+ TAM, demonstrable market share, clear competitive moat",
+            "current": f"${tam / 1e9:.1f}B TAM, {market_share:.1f}% share",
+            "gap": "Define TAM" if tam == 0 else "Strong positioning" if market_share > 5 else "Build share",
+        }
+
+        # 7. Legal/IP Readiness (clean cap table, no material litigation, IP protected)
+        clean_cap = target.get("clean_cap_table", False)
+        ip_protected = target.get("ip_protected", False)
+        no_litigation = target.get("no_material_litigation", True)
+        legal_score = (35 if clean_cap else 0) + (35 if ip_protected else 0) + (30 if no_litigation else 0)
+        gates["legal_ip"] = {
+            "score": legal_score,
+            "benchmark": "Clean cap table, IP protected, no material litigation",
+            "current": f"{'Clean cap' if clean_cap else 'Cap issues'}, {'IP protected' if ip_protected else 'IP exposed'}, {'No litigation' if no_litigation else 'Litigation risk'}",
+            "gap": "Address outstanding items" if legal_score < 70 else "Ready",
+        }
+
+        # 8. Investor Relations / Story (clear narrative, comparable public comps)
+        has_ir_team = target.get("has_ir_capability", False)
+        public_comps = target.get("public_comparable_count", 0)
+        gates["investor_story"] = {
+            "score": (40 if has_ir_team else 10) + min(60, public_comps * 15),
+            "benchmark": "IR capability, 3+ public comps, clear equity story",
+            "current": f"{'IR team' if has_ir_team else 'No IR'}, {public_comps} public comps",
+            "gap": "Build IR capability" if not has_ir_team else "Ready",
+        }
+
+        # Overall IPO readiness
+        scores = [g["score"] for g in gates.values()]
+        overall = round(sum(scores) / len(scores))
+
+        # Timeline estimate
+        if overall >= 80:
+            timeline = "6-12 months — IPO ready with minor preparations"
+            verdict = "IPO_READY"
+        elif overall >= 60:
+            timeline = "12-24 months — significant preparation needed"
+            verdict = "IPO_TRACK"
+        elif overall >= 40:
+            timeline = "24-36 months — major buildout required"
+            verdict = "IPO_DEVELOPMENT"
+        else:
+            timeline = "36+ months — fundamental transformation needed"
+            verdict = "NOT_READY"
+
+        return {
+            "overall_score": overall,
+            "verdict": verdict,
+            "timeline": timeline,
+            "gates": gates,
+            "passing_gates": sum(1 for g in gates.values() if g["score"] >= 70),
+            "total_gates": len(gates),
+            "critical_gaps": [name for name, g in gates.items() if g["score"] < 40],
+        }
 
 
 merlin = MerlinAgent()

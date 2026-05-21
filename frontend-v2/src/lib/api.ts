@@ -273,6 +273,11 @@ export const eagleeye = {
   convert: (signalId: string) =>
     nestFetch(`/api/eagleeye/convert/${signalId}`, { method: "POST" }),
   stats: () => nestFetch("/api/eagleeye/stats"),
+  ipoReadiness: (target: Record<string, unknown>) =>
+    nestFetch("/api/eagleeye/ipo-readiness", {
+      method: "POST",
+      body: JSON.stringify({ target }),
+    }),
 };
 
 // ── Hawkeye ─────────────────────────────────────────────────

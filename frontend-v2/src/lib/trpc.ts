@@ -387,6 +387,7 @@ const eagleeye = {
   convert: m((input: { signalId: string }) => api.eagleeye.convert(input.signalId)),
   updateStatus: m((input: { signalId: string; status: string }) =>
     api.eagleeye.updateSignalStatus(input.signalId, input.status)),
+  ipoReadiness: m((input: Record<string, unknown>) => api.eagleeye.ipoReadiness(input)),
 };
 
 // ── Hawkeye ─────────────────────────────────────────────────────
