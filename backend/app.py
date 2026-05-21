@@ -34,6 +34,7 @@ from routes.intelligence import intelligence_bp
 from routes.engines_api import engines_bp
 from routes.powerstrip import powerstrip_bp
 from routes.bond_workflow import bond_workflow_bp
+from routes.bond_structuring import bond_structuring_bp
 from routes.eagleeye import eagleeye_bp
 from routes.hawkeye import hawkeye_bp
 from routes.rating_esg import rating_esg_bp
@@ -125,6 +126,7 @@ def create_app():
     app.register_blueprint(rating_esg_bp, url_prefix="/api/rating-esg")
     app.register_blueprint(health_bp, url_prefix="/api")
     app.register_blueprint(nightvision_bp, url_prefix="/api/nightvision")
+    app.register_blueprint(bond_structuring_bp, url_prefix="/api/bond-structuring")
 
     @app.get("/api/metrics")
     def metrics():
