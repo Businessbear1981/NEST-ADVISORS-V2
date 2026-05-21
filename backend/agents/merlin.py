@@ -43,38 +43,149 @@ except ImportError:
 
 
 # NAICS priority tiers for NEST acquisition strategy
+# Tier 1: +8 score bonus | Tier 2: +4 bonus | Tier 3: +1 bonus
 NAICS_PRIORITY = {
     "tier1": {
-        "description": "Core targets — fragmented services with recurring revenue",
+        "description": "Highest-conviction targets -- recurring revenue, essential services, fragmented markets ripe for roll-up",
         "codes": {
+            # Essential facility/property services -- sticky contracts, low churn
             "561730": "Landscaping Services",
-            "561720": "Janitorial Services",
+            "561720": "Janitorial / Commercial Cleaning",
             "561210": "Facilities Support Services",
-            "238220": "Plumbing, Heating, and AC Contractors",
+            "561621": "Security Guard & Patrol Services",
+            "561710": "Exterminating & Pest Control",
+            # Essential trades -- licensed, recurring, impossible to offshore
+            "238220": "Plumbing, Heating & AC Contractors",
             "238210": "Electrical Contractors",
             "238160": "Roofing Contractors",
-            "811111": "General Auto Repair",
-            "812310": "Coin-Operated Laundries",
+            "238990": "Other Specialty Trade Contractors",
+            "238130": "Framing Contractors",
+            # Home & healthcare -- aging demographic tailwind
+            "621610": "Home Health Care Services",
+            "623110": "Nursing Care Facilities",
+            "623210": "Assisted Living Facilities",
+            "624120": "Services for the Elderly & Disabled",
+            "624410": "Child Day Care Services",
+            # Waste & environmental -- essential, regulation-moated
+            "562111": "Solid Waste Collection",
+            "562910": "Remediation Services",
+            "562920": "Materials Recovery Facilities",
+            # Auto repair -- fragmented, cash-flowing, recession-resilient
+            "811111": "General Automotive Repair",
+            "811121": "Automotive Body & Paint Repair",
+            "811192": "Car Washes",
+            # Staffing -- high volume, recurring, fragmented
+            "561311": "Employment Placement Agencies",
+            "561320": "Temporary Help Services",
+            "561330": "Professional Employer Organizations",
+            # Inspection / testing -- regulated, recurring certifications
+            "541380": "Testing Laboratories",
+            "541350": "Building Inspection Services",
         },
     },
     "tier2": {
-        "description": "Adjacent — light industrial and specialty services",
+        "description": "Strong adjacents -- scalable models with clear value-add thesis",
         "codes": {
-            "423830": "Industrial Machinery Distribution",
+            # Distribution / wholesale -- add logistics capability to roll-ups
+            "423830": "Industrial Machinery & Equipment Wholesale",
+            "423860": "Transportation Equipment & Supplies Wholesale",
+            "423720": "Plumbing & Heating Equipment Wholesale",
+            "424440": "Poultry & Poultry Products Wholesale",
+            "424410": "General Line Grocery Wholesale",
+            "424690": "Other Chemical & Allied Products Wholesale",
+            # Trucking & logistics -- asset-backed, steady cash flow
             "484110": "General Freight Trucking (Local)",
-            "562111": "Solid Waste Collection",
-            "621610": "Home Health Care Services",
-            "624120": "Services for Elderly / Disabled",
-            "722513": "Limited-Service Restaurants",
+            "484121": "General Freight Trucking (Long Distance, TL)",
+            "484122": "General Freight Trucking (Long Distance, LTL)",
+            "484220": "Specialized Freight - Refrigerated",
+            "484230": "Specialized Freight - Other",
+            "493110": "General Warehousing & Storage",
+            "488490": "Other Support Activities for Road Transportation",
+            # Professional services -- high margin, portable
+            "541211": "CPA Firms (Audit & Tax)",
+            "541213": "Tax Preparation Services",
+            "541310": "Architectural Services",
+            "541330": "Engineering Services",
+            "541611": "General Management Consulting",
+            "541612": "HR Consulting",
+            "541620": "Environmental Consulting",
+            "541690": "Other Scientific & Technical Consulting",
+            # IT / technology services -- recurring SaaS or managed services
+            "541511": "Custom Computer Programming Services",
+            "541512": "Computer Systems Design Services",
+            "541513": "Computer Facilities Management",
+            "541519": "Other Computer Related Services",
+            "518210": "Data Processing & Hosting Services",
+            # Healthcare adjacent
+            "621111": "Physician Offices",
+            "621210": "Dentist Offices",
+            "621340": "Physical, Occupational & Speech Therapist Offices",
+            "621491": "HMO Medical Centers",
+            "621498": "Other Outpatient Care Centers",
         },
     },
     "tier3": {
-        "description": "Opportunistic — asset-heavy with turnaround potential",
+        "description": "Opportunistic -- asset-heavy, cyclical, or special-situation targets with turnaround potential",
         "codes": {
-            "236220": "Commercial Building Construction",
+            # Construction -- lumpy but large deal sizes
+            "236115": "New Single-Family Home Construction",
+            "236116": "New Multifamily Housing Construction",
+            "236210": "Industrial Building Construction",
+            "236220": "Commercial & Institutional Building Construction",
+            "237110": "Water & Sewer System Construction",
+            "237130": "Power & Communication Line Construction",
+            "237310": "Highway, Street & Bridge Construction",
+            "237990": "Heavy Civil Construction (Other)",
+            # Real estate / leasing
+            "531110": "Lessors of Residential Buildings",
             "531120": "Lessors of Nonresidential Buildings",
-            "532120": "Truck / Trailer Rental",
+            "531130": "Lessors of Miniwarehouses / Self-Storage",
+            "531210": "Offices of Real Estate Agents & Brokers",
+            "531311": "Residential Property Managers",
+            "531312": "Nonresidential Property Managers",
+            "531320": "Offices of Real Estate Appraisers",
+            # Equipment & vehicle rental
+            "532111": "Passenger Car Rental",
+            "532120": "Truck, Utility Trailer & RV Rental",
+            "532310": "General Rental Centers",
+            "532411": "Commercial Air, Rail & Water Transport Equipment Rental",
+            "532412": "Construction & Mining Equipment Rental",
+            "532420": "Office Machinery & Equipment Rental",
+            # Manufacturing -- light industrial with defensible niche
+            "332311": "Prefabricated Metal Building Manufacturing",
+            "332322": "Sheet Metal Work Manufacturing",
+            "332710": "Machine Shops",
+            "332720": "Turned Product & Screw, Nut & Bolt Manufacturing",
+            "332999": "All Other Miscellaneous Fabricated Metal Products",
+            "333120": "Construction Machinery Manufacturing",
+            "333924": "Industrial Truck Manufacturing",
+            "339112": "Surgical & Medical Instrument Manufacturing",
+            "339113": "Surgical Appliance & Supplies Manufacturing",
+            # Retail / auto dealers -- asset-backed, predictable floor plan
             "441110": "New Car Dealers",
+            "441120": "Used Car Dealers",
+            "441210": "Recreational Vehicle Dealers",
+            "441222": "Boat Dealers",
+            "447110": "Gasoline Stations with Convenience Stores",
+            # Food service / hospitality -- roll-up candidates
+            "722511": "Full-Service Restaurants",
+            "722513": "Limited-Service Restaurants",
+            "722514": "Cafeterias & Grill Buffets",
+            "722515": "Snack & Nonalcoholic Beverage Bars",
+            "721110": "Hotels & Motels",
+            # Education / training
+            "611519": "Other Technical & Trade Schools",
+            "611610": "Fine Arts Schools",
+            "611620": "Sports & Recreation Instruction",
+            "611630": "Language Schools",
+            "611691": "Exam Preparation & Tutoring",
+            # Energy / utilities
+            "221111": "Hydroelectric Power Generation",
+            "221114": "Solar Electric Power Generation",
+            "221115": "Wind Electric Power Generation",
+            "221210": "Natural Gas Distribution",
+            "221310": "Water Supply & Irrigation Systems",
+            "221320": "Sewage Treatment Facilities",
         },
     },
 }
