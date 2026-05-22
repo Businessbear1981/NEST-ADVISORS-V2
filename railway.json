@@ -6,7 +6,7 @@
     "buildCommand": null
   },
   "deploy": {
-    "startCommand": "gunicorn -k eventlet -w 1 --bind 0.0.0.0:$PORT --timeout 120 app:app",
+    "startCommand": null,
     "region": "us-west2",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 30,
