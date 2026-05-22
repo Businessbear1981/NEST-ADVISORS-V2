@@ -453,6 +453,26 @@ function useUtils() {
   };
 }
 
+// ── Signal Intelligence ─────────────────────────────────────────
+
+const signalHooks = {
+  query: {
+    useQuery: (
+      input?: Record<string, string>,
+      opts?: Partial<UseQueryOptions>,
+    ) =>
+      useQuery({
+        queryKey: ["signals", "query", input],
+        queryFn: () => api.signals.query(input),
+        ...opts,
+      }),
+  },
+  stats: q(["signals", "stats"], () => api.signals.stats()),
+  vectorLatest: q(["signals", "vectorLatest"], () => api.signals.vectorLatest()),
+  vectorHistory: q(["signals", "vectorHistory"], () => api.signals.vectorHistory()),
+  pollFred: m(() => api.signals.pollFred()),
+};
+
 // ── Public export ────────────────────────────────────────────────
 
 export const trpc = {
@@ -470,5 +490,6 @@ export const trpc = {
   hawkeye: hawkeyeHooks,
   ratingEsg,
   bondStructuring,
+  signals: signalHooks,
   useUtils,
 };

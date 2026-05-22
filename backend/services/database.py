@@ -186,6 +186,65 @@ class DatabaseService:
         """Upsert an investor record for Sterling."""
         return self.upsert("investors", data)
 
+    # ── Signal Intelligence ──────────────────────────────────────
+
+    def save_signal_event(self, event: dict):
+        """Insert a single signal event. Returns inserted row or None."""
+        return self.insert("signal_events", event)
+
+    def save_signal_events_batch(self, events: list[dict]):
+        """Insert multiple signal events in one call."""
+        if not events:
+            return []
+        return self.insert("signal_events", events)
+
+    def upsert_signal_event(self, event: dict):
+        """Upsert a signal event (dedup on source + source_ref)."""
+        return self.upsert("signal_events", event)
+
+    def query_signals(self, params: dict = None, limit: int = 100,
+                      order: str = "captured_at.desc"):
+        """Query signal_events with filters. Returns list of dicts."""
+        q = dict(params or {})
+        q["order"] = order
+        q["limit"] = str(limit)
+        result = self.select("signal_events", q)
+        return result if isinstance(result, list) else []
+
+    def get_latest_signal(self, signal_type: str = None, source: str = None):
+        """Get most recent signal event, optionally filtered."""
+        params = {"order": "captured_at.desc", "limit": "1"}
+        if signal_type:
+            params["signal_type"] = f"eq.{signal_type}"
+        if source:
+            params["source"] = f"eq.{source}"
+        result = self.select("signal_events", params)
+        if isinstance(result, list) and result:
+            return result[0]
+        return None
+
+    def save_vector_snapshot(self, snapshot: dict):
+        """Persist a VectorAgent scoring run."""
+        return self.insert("vector_snapshots", snapshot)
+
+    def get_latest_vector_snapshot(self, deal_id: str = None):
+        """Get most recent vector snapshot, optionally by deal."""
+        params = {"order": "created_at.desc", "limit": "1"}
+        if deal_id:
+            params["deal_id"] = f"eq.{deal_id}"
+        result = self.select("vector_snapshots", params)
+        if isinstance(result, list) and result:
+            return result[0]
+        return None
+
+    def query_vector_snapshots(self, params: dict = None, limit: int = 50):
+        """Query vector scoring history."""
+        q = dict(params or {})
+        q["order"] = "created_at.desc"
+        q["limit"] = str(limit)
+        result = self.select("vector_snapshots", q)
+        return result if isinstance(result, list) else []
+
 
 # Singleton
 db = DatabaseService()

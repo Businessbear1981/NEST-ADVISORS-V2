@@ -367,10 +367,29 @@ export const bondStructuring = {
     }),
 };
 
+// ── Signal Intelligence ──────────────────────────────────────
+export const signals = {
+  query: (filters?: Record<string, string>) => {
+    const params = new URLSearchParams(filters || {});
+    return nestFetch(`/api/signals/query?${params}`);
+  },
+  latest: (filters?: Record<string, string>) => {
+    const params = new URLSearchParams(filters || {});
+    return nestFetch(`/api/signals/latest?${params}`);
+  },
+  stats: () => nestFetch("/api/signals/stats"),
+  pollFred: () => nestFetch("/api/signals/poll/fred", { method: "POST" }),
+  vectorLatest: (dealId?: string) =>
+    nestFetch(`/api/signals/vector/latest${dealId ? `?deal_id=${dealId}` : ""}`),
+  vectorHistory: (limit?: number) =>
+    nestFetch(`/api/signals/vector/history?limit=${limit || 50}`),
+};
+
 export const api = {
   auth, deals, fund, agents, market, bondTools, risk,
   modeling, maxwell, architect, pricing, insurance, roots, metrics,
   powerstrip, bondWorkflow, eagleeye, hawkeye, ratingEsg, bondStructuring,
+  signals,
 };
 
 export default api;
