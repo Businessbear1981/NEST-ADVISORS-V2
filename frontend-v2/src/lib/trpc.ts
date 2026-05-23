@@ -486,6 +486,21 @@ const signalHooks = {
   vectorLatest: q(["signals", "vectorLatest"], () => api.signals.vectorLatest()),
   vectorHistory: q(["signals", "vectorHistory"], () => api.signals.vectorHistory()),
   pollFred: m(() => api.signals.pollFred()),
+  pollEdgar: m((input?: { days?: number }) => api.signals.pollEdgar(input?.days)),
+  alerts: {
+    useQuery: (
+      input?: Record<string, string>,
+      opts?: Partial<UseQueryOptions>,
+    ) =>
+      useQuery({
+        queryKey: ["signals", "alerts", input],
+        queryFn: () => api.signals.alerts(input),
+        ...opts,
+      }),
+  },
+  updateAlertStatus: m((input: { alertId: string; status: string }) =>
+    api.signals.updateAlertStatus(input.alertId, input.status),
+  ),
 };
 
 // ── Public export ────────────────────────────────────────────────

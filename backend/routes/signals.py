@@ -1,13 +1,16 @@
-"""Signal Intelligence routes — unified signal query + FRED poll trigger.
+"""Signal Intelligence routes — unified signal query + FRED/EDGAR poll triggers.
 
-GET   /api/signals/query          — query persisted signals with filters + cursor
-GET   /api/signals/latest         — most recent signal event
-GET   /api/signals/stats          — signal counts by category/type
-GET   /api/signals/related        — related signals for correlation panel
-PATCH /api/signals/<id>/status    — update signal lifecycle status
-POST  /api/signals/poll/fred      — pull live FRED rates, normalize, persist, score
-GET   /api/signals/vector/latest  — latest VectorAgent snapshot
-GET   /api/signals/vector/history — scoring history
+GET   /api/signals/query              — query persisted signals with filters + cursor
+GET   /api/signals/latest             — most recent signal event
+GET   /api/signals/stats              — signal counts by category/type
+GET   /api/signals/related            — related signals for correlation panel
+PATCH /api/signals/<id>/status        — update signal lifecycle status
+POST  /api/signals/poll/fred          — pull live FRED rates, normalize, persist, score
+POST  /api/signals/poll/edgar         — pull EDGAR filings, normalize, persist
+GET   /api/signals/alerts             — query signal alerts (cluster, escalation, convergence)
+PATCH /api/signals/alerts/<id>/status — acknowledge/resolve signal alerts
+GET   /api/signals/vector/latest      — latest VectorAgent snapshot
+GET   /api/signals/vector/history     — scoring history
 """
 from flask import Blueprint, jsonify, request, current_app
 from datetime import datetime, timedelta
@@ -233,6 +236,90 @@ def poll_fred():
         "signal_ids": [s.get("id") for s in persisted],
         "vector": vector_result,
     }, 201)
+
+
+@signals_bp.route("/poll/edgar", methods=["POST"])
+def poll_edgar():
+    """Pull recent EDGAR filings matching NEST target criteria,
+    normalize into SignalEvents, and persist to Supabase."""
+    from services import signal_service
+    from services.edgar_connector import poll_recent_filings
+
+    days_back = request.args.get("days", 7, type=int)
+    limit = request.args.get("limit", 40, type=int)
+
+    try:
+        filings = poll_recent_filings(days_back=days_back, limit=limit)
+    except Exception as e:
+        return _err(f"EDGAR API unavailable: {str(e)}", 503)
+
+    if not filings:
+        return _ok({"filings_found": 0, "signals_ingested": 0, "signal_ids": []})
+
+    events = signal_service.normalize_edgar_batch(filings)
+    if not events:
+        return _ok({"filings_found": len(filings), "signals_ingested": 0, "signal_ids": []})
+
+    persisted = signal_service.ingest_batch(events)
+
+    return _ok({
+        "filings_found": len(filings),
+        "signals_ingested": len(persisted),
+        "signal_ids": [s.get("id") for s in persisted],
+        "filings_summary": [
+            {
+                "entity": f.get("entity_name", ""),
+                "form_type": f.get("form_type", ""),
+                "state": f.get("state"),
+                "amount": f.get("offering_amount"),
+            }
+            for f in filings[:10]
+        ],
+    }, 201)
+
+
+@signals_bp.route("/alerts", methods=["GET"])
+def query_alerts():
+    """Query signal alerts with optional status filter."""
+    from services.database import db
+
+    status = request.args.get("status")
+    alert_type = request.args.get("alert_type")
+    limit = request.args.get("limit", 50, type=int)
+
+    params = {}
+    if status:
+        params["status"] = f"eq.{status}"
+    if alert_type:
+        params["alert_type"] = f"eq.{alert_type}"
+
+    alerts = db.query_signal_alerts(params, limit=limit)
+    return _ok({"alerts": alerts, "count": len(alerts)})
+
+
+@signals_bp.route("/alerts/<alert_id>/status", methods=["PATCH"])
+def update_alert_status(alert_id):
+    """Update alert status: new → acknowledged → resolved."""
+    from services.database import db
+
+    VALID_ALERT_STATUSES = ("new", "acknowledged", "resolved")
+    body = request.get_json(silent=True) or {}
+    new_status = body.get("status")
+
+    if new_status not in VALID_ALERT_STATUSES:
+        return _err(f"Invalid status. Must be one of: {', '.join(VALID_ALERT_STATUSES)}")
+
+    update_data = {"status": new_status}
+    if new_status == "resolved":
+        update_data["resolved_at"] = datetime.utcnow().isoformat()
+
+    result = db.update_signal_alert(alert_id, update_data)
+
+    if not result:
+        return _err("Alert not found or update failed", 404)
+
+    updated = result[0] if isinstance(result, list) and result else result
+    return _ok(updated)
 
 
 @signals_bp.route("/vector/latest", methods=["GET"])

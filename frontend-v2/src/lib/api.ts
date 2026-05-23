@@ -391,6 +391,17 @@ export const signals = {
       body: JSON.stringify({ status }),
     }),
   pollFred: () => nestFetch("/api/signals/poll/fred", { method: "POST" }),
+  pollEdgar: (days?: number) =>
+    nestFetch(`/api/signals/poll/edgar${days ? `?days=${days}` : ""}`, { method: "POST" }),
+  alerts: (filters?: Record<string, string>) => {
+    const params = new URLSearchParams(filters || {});
+    return nestFetch(`/api/signals/alerts?${params}`);
+  },
+  updateAlertStatus: (alertId: string, status: string) =>
+    nestFetch(`/api/signals/alerts/${alertId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
   vectorLatest: (dealId?: string) =>
     nestFetch(`/api/signals/vector/latest${dealId ? `?deal_id=${dealId}` : ""}`),
   vectorHistory: (limit?: number) =>

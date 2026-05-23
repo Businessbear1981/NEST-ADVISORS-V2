@@ -245,6 +245,24 @@ class DatabaseService:
         result = self.select("vector_snapshots", q)
         return result if isinstance(result, list) else []
 
+    # ── Signal Alerts ─────────────────────────────────────────────
+
+    def save_signal_alert(self, alert: dict):
+        """Insert a signal alert. Returns inserted row or None."""
+        return self.insert("signal_alerts", alert)
+
+    def query_signal_alerts(self, params: dict = None, limit: int = 50):
+        """Query signal_alerts with filters. Returns list of dicts."""
+        q = dict(params or {})
+        q["order"] = "created_at.desc"
+        q["limit"] = str(limit)
+        result = self.select("signal_alerts", q)
+        return result if isinstance(result, list) else []
+
+    def update_signal_alert(self, alert_id: str, data: dict):
+        """Update a signal alert by ID."""
+        return self.update("signal_alerts", {"id": f"eq.{alert_id}"}, data)
+
 
 # Singleton
 db = DatabaseService()

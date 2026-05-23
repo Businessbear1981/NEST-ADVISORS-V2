@@ -68,7 +68,8 @@ class SignalEvent:
 
 def ingest(event: SignalEvent) -> Optional[dict]:
     """Ingest a single signal event into Supabase.
-    Returns the persisted row or None on failure."""
+    Returns the persisted row or None on failure.
+    After successful persist, runs correlation checks to detect clusters."""
     row = event.to_row()
 
     if event.source_ref:
@@ -79,6 +80,15 @@ def ingest(event: SignalEvent) -> Optional[dict]:
     if result:
         persisted = result[0] if isinstance(result, list) else result
         log.info("Signal ingested: %s/%s [%s]", event.source, event.signal_type, event.source_ref or "no-ref")
+
+        try:
+            from services.correlation_service import check_correlations
+            alerts = check_correlations(persisted)
+            if alerts:
+                log.info("Correlation engine created %d alert(s) for signal %s", len(alerts), persisted.get("id"))
+        except Exception as e:
+            log.warning("Correlation check failed (non-blocking): %s", e)
+
         return persisted
 
     log.warning("Signal ingestion failed: %s/%s", event.source, event.signal_type)
@@ -238,6 +248,71 @@ def normalize_fred_snapshot(snapshot: dict) -> list[SignalEvent]:
         ))
 
     return events
+
+
+# ---------------------------------------------------------------------------
+# EDGAR signal normalizer — converts raw EDGAR filing data into SignalEvents
+# ---------------------------------------------------------------------------
+
+def normalize_edgar_filing(filing: dict) -> SignalEvent:
+    """Convert a normalized EDGAR filing dict into a SignalEvent.
+
+    Input: dict from edgar_connector.poll_recent_filings()
+    Output: SignalEvent ready for ingestion
+    """
+    form_type = filing.get("form_type", "")
+    entity = filing.get("entity_name", "")
+    accession = filing.get("accession_number", "")
+    offering_amount = filing.get("offering_amount")
+    state = filing.get("state")
+    date_filed = filing.get("date_filed", "")
+
+    if form_type.startswith("D"):
+        category = "deal_sourcing"
+    elif form_type == "8-K":
+        category = "regulatory"
+    elif form_type.startswith("S-1"):
+        category = "deal_sourcing"
+    else:
+        category = "regulatory"
+
+    severity = "info"
+    if offering_amount is not None:
+        if offering_amount >= 50_000_000:
+            severity = "high"
+        elif offering_amount >= 10_000_000:
+            severity = "medium"
+        else:
+            severity = "low"
+    elif form_type == "8-K":
+        severity = "medium"
+
+    return SignalEvent(
+        signal_type="edgar_filing",
+        category=category,
+        source="edgar",
+        value=offering_amount,
+        direction=None,
+        confidence=0.85,
+        severity=severity,
+        state=state,
+        entity_name=entity or None,
+        source_ref=f"EDGAR_{accession}" if accession else None,
+        payload={
+            "form_type": form_type,
+            "date_filed": date_filed,
+            "cik": filing.get("cik", ""),
+            "sic_code": filing.get("sic_code", ""),
+            "description": filing.get("description", ""),
+            "url": filing.get("url", ""),
+            "accession_number": accession,
+        },
+    )
+
+
+def normalize_edgar_batch(filings: list[dict]) -> list[SignalEvent]:
+    """Convert a batch of EDGAR filings into SignalEvents."""
+    return [normalize_edgar_filing(f) for f in filings]
 
 
 def normalize_webhook(source: str, event_type: str, payload: dict) -> SignalEvent:

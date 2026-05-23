@@ -55,6 +55,20 @@ interface VectorSnapshot {
   created_at: string;
 }
 
+interface SignalAlert {
+  id: string;
+  alert_type: string;
+  title: string;
+  description: string | null;
+  severity: string;
+  signal_ids: string[];
+  entity_name: string | null;
+  market: string | null;
+  state: string | null;
+  status: string;
+  created_at: string;
+}
+
 // ── Constants ───────────────────────────────────────────────────
 
 const PAGE_SIZE = 20;
@@ -812,6 +826,10 @@ export default function EagleEyeV2() {
   const vectorQuery = trpc.signals.vectorLatest.useQuery(undefined, {
     retry: false,
   });
+  const alertsQuery = trpc.signals.alerts.useQuery(
+    { status: "new" },
+    { refetchInterval: POLL_INTERVAL },
+  );
 
   // Cursor-based new signal detection
   useEffect(() => {
@@ -866,6 +884,15 @@ export default function EagleEyeV2() {
     onError: () => setPolling(false),
   });
 
+  const [pollingEdgar, setPollingEdgar] = useState(false);
+  const pollEdgar = trpc.signals.pollEdgar.useMutation({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["signals"] });
+      setPollingEdgar(false);
+    },
+    onError: () => setPollingEdgar(false),
+  });
+
   const statusMutation = trpc.signals.updateStatus.useMutation({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["signals"] });
@@ -875,6 +902,18 @@ export default function EagleEyeV2() {
   const allSignals: SignalEvent[] = (signalsQuery.data as any)?.signals || [];
   const stats: StatsData | null = (statsQuery.data as any) || null;
   const vector: VectorSnapshot | null = (vectorQuery.data as any) || null;
+  const activeAlerts: SignalAlert[] = (alertsQuery.data as any)?.alerts || [];
+
+  const [alertFilterIds, setAlertFilterIds] = useState<Set<string> | null>(null);
+
+  const handleAlertClick = useCallback((alert: SignalAlert) => {
+    if (alertFilterIds && alert.signal_ids.every((id) => alertFilterIds.has(id))) {
+      setAlertFilterIds(null);
+    } else {
+      setAlertFilterIds(new Set(alert.signal_ids));
+    }
+    setPage(0);
+  }, [alertFilterIds]);
 
   const displaySignals = useMemo(() => {
     let filtered = allSignals;
@@ -882,8 +921,11 @@ export default function EagleEyeV2() {
     if (cutoff) {
       filtered = filtered.filter((s) => s.captured_at >= cutoff);
     }
+    if (alertFilterIds) {
+      filtered = filtered.filter((s) => alertFilterIds.has(s.id));
+    }
     return filtered;
-  }, [allSignals, dateRange]);
+  }, [allSignals, dateRange, alertFilterIds]);
 
   const selectedSignal = useMemo(
     () => allSignals.find((s) => s.id === selectedSignalId) || null,
@@ -911,6 +953,11 @@ export default function EagleEyeV2() {
   const handlePollFred = () => {
     setPolling(true);
     pollFred.mutate(undefined as any);
+  };
+
+  const handlePollEdgar = () => {
+    setPollingEdgar(true);
+    pollEdgar.mutate({});
   };
 
   const handleStatusChange = useCallback((signalId: string, status: string) => {
@@ -984,6 +1031,15 @@ export default function EagleEyeV2() {
               <span className="font-mono text-[0.5rem] text-emerald-400 uppercase tracking-wider">Live</span>
             </div>
             <Button
+              onClick={handlePollEdgar}
+              disabled={pollingEdgar}
+              variant="ghost"
+              className="h-7 gap-1 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 font-mono text-[0.56rem] uppercase tracking-wider text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
+            >
+              {pollingEdgar ? <RefreshCw size={10} className="animate-spin" /> : <FileText size={10} />}
+              {pollingEdgar ? "Polling..." : "Poll EDGAR"}
+            </Button>
+            <Button
               onClick={handlePollFred}
               disabled={polling}
               variant="ghost"
@@ -994,6 +1050,40 @@ export default function EagleEyeV2() {
             </Button>
           </div>
         </div>
+
+        {/* Cluster Alert Callouts */}
+        {activeAlerts.length > 0 && (
+          <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+            {activeAlerts.slice(0, 5).map((alert) => {
+              const isFiltered = alertFilterIds && alert.signal_ids.every((id) => alertFilterIds.has(id));
+              return (
+                <motion.button
+                  key={alert.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  onClick={() => handleAlertClick(alert)}
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[0.56rem] transition-all ${
+                    isFiltered
+                      ? "border-amber-400/40 bg-amber-400/20 text-amber-200"
+                      : "border-amber-400/20 bg-amber-400/8 text-amber-300/90 hover:bg-amber-400/15 hover:border-amber-400/30"
+                  }`}
+                >
+                  <AlertTriangle size={10} className="shrink-0" />
+                  <span className="truncate max-w-[320px]">{alert.title}</span>
+                  <span className="shrink-0 rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[0.44rem] font-bold">
+                    {alert.signal_ids.length}
+                  </span>
+                  {isFiltered && <X size={9} className="shrink-0 ml-0.5" />}
+                </motion.button>
+              );
+            })}
+            {activeAlerts.length > 5 && (
+              <span className="font-mono text-[0.5rem] text-amber-400/50">
+                +{activeAlerts.length - 5} more
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── New Signals Banner ─────────────────────────────── */}
@@ -1072,6 +1162,14 @@ export default function EagleEyeV2() {
                 <span className="flex items-center gap-1 rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 font-mono text-[0.5rem] text-amber-300">
                   <MapPin size={9} /> {mapFilterState}
                   <button onClick={() => handleMapFilter(null)} className="ml-1 hover:text-white">
+                    <X size={9} />
+                  </button>
+                </span>
+              )}
+              {alertFilterIds && (
+                <span className="flex items-center gap-1 rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 font-mono text-[0.5rem] text-amber-300">
+                  <AlertTriangle size={9} /> Cluster filter ({alertFilterIds.size} signals)
+                  <button onClick={() => setAlertFilterIds(null)} className="ml-1 hover:text-white">
                     <X size={9} />
                   </button>
                 </span>
