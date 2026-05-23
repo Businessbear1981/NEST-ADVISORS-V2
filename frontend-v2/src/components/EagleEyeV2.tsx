@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -6,10 +6,14 @@ import {
   BarChart3, MapPin, Building2, FileText, Shield, Clock,
   RefreshCw, ChevronLeft, ChevronRight, AlertTriangle,
   Eye, X, ExternalLink, Flag, Search, Filter,
+  CheckCircle2, XCircle, ArrowRight, Link2, Brain,
+  ChevronDown, Bell,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -54,6 +58,8 @@ interface VectorSnapshot {
 // ── Constants ───────────────────────────────────────────────────
 
 const PAGE_SIZE = 20;
+const POLL_INTERVAL = 30_000;
+const LS_KEY = "eagleeye_last_seen_at";
 
 const CATEGORIES = [
   { key: "all", label: "All Signals", color: "white" },
@@ -62,6 +68,23 @@ const CATEGORIES = [
   { key: "macro_market", label: "Macro", color: "amber" },
   { key: "property", label: "Property", color: "emerald" },
 ] as const;
+
+const STATUS_OPTIONS = [
+  { key: "all", label: "All", color: "text-slate-300" },
+  { key: "new", label: "New", color: "text-cyan-300" },
+  { key: "reviewed", label: "Reviewed", color: "text-blue-300" },
+  { key: "actionable", label: "Actionable", color: "text-amber-300" },
+  { key: "acted_on", label: "Acted On", color: "text-emerald-300" },
+  { key: "dismissed", label: "Dismissed", color: "text-slate-500" },
+] as const;
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  new: { label: "New", color: "text-cyan-300", bg: "bg-cyan-400/10", border: "border-cyan-400/25" },
+  reviewed: { label: "Reviewed", color: "text-blue-300", bg: "bg-blue-400/10", border: "border-blue-400/25" },
+  actionable: { label: "Actionable", color: "text-amber-300", bg: "bg-amber-400/10", border: "border-amber-400/25" },
+  acted_on: { label: "Acted On", color: "text-emerald-300", bg: "bg-emerald-400/10", border: "border-emerald-400/25" },
+  dismissed: { label: "Dismissed", color: "text-slate-500", bg: "bg-slate-400/10", border: "border-slate-400/25" },
+};
 
 const SEVERITY_ORDER = ["critical", "high", "medium", "low", "info"] as const;
 
@@ -158,20 +181,31 @@ function getDateCutoff(range: string): string | null {
   return d.toISOString();
 }
 
+function getLastSeenAt(): string | null {
+  try { return localStorage.getItem(LS_KEY); } catch { return null; }
+}
+
+function setLastSeenAt(ts: string) {
+  try { localStorage.setItem(LS_KEY, ts); } catch { /* noop */ }
+}
+
 // ── Signal Card ─────────────────────────────────────────────────
 
 function SignalCard({
   signal,
   onClick,
   isSelected,
+  isNew,
 }: {
   signal: SignalEvent;
   onClick: () => void;
   isSelected: boolean;
+  isNew?: boolean;
 }) {
   const Icon = TYPE_ICONS[signal.signal_type] || Activity;
   const sev = SEVERITY_CONFIG[signal.severity] || SEVERITY_CONFIG.info;
   const catColor = CATEGORY_COLOR[signal.category] || CATEGORY_COLOR.entity;
+  const statusCfg = STATUS_CONFIG[signal.status];
 
   return (
     <motion.button
@@ -179,7 +213,7 @@ function SignalCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       onClick={onClick}
-      className={`w-full text-left rounded-lg border-l-[3px] ${sev.border} border border-white/[0.06] bg-black/25 px-3.5 py-3 transition-all duration-150 hover:bg-white/[0.04] hover:border-white/[0.12] ${isSelected ? "ring-1 ring-amber-400/30 bg-white/[0.04]" : ""}`}
+      className={`w-full text-left rounded-lg border-l-[3px] ${sev.border} border border-white/[0.06] bg-black/25 px-3.5 py-3 transition-all duration-150 hover:bg-white/[0.04] hover:border-white/[0.12] ${isSelected ? "ring-1 ring-amber-400/30 bg-white/[0.04]" : ""} ${isNew ? "ring-1 ring-amber-400/40" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -188,11 +222,21 @@ function SignalCard({
             <span className="font-mono text-[0.72rem] font-semibold text-white truncate">
               {signal.entity_name || signal.signal_type.replace(/_/g, " ")}
             </span>
+            {isNew && (
+              <span className="shrink-0 rounded-full bg-amber-400/20 border border-amber-400/30 px-1.5 py-0.5 font-mono text-[0.42rem] font-bold uppercase tracking-wider text-amber-300">
+                new
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className={`rounded border px-1.5 py-0.5 font-mono text-[0.5rem] uppercase tracking-wider ${catColor}`}>
               {signal.category.replace(/_/g, " ")}
             </span>
+            {statusCfg && signal.status !== "new" && (
+              <span className={`rounded border px-1.5 py-0.5 font-mono text-[0.5rem] uppercase tracking-wider ${statusCfg.color} ${statusCfg.bg} ${statusCfg.border}`}>
+                {statusCfg.label}
+              </span>
+            )}
             <span className="font-mono text-[0.52rem] text-slate-500 uppercase tracking-wide">
               {signal.signal_type.replace(/_/g, " ")}
             </span>
@@ -326,7 +370,6 @@ function IntelligenceMap({
           const isActive = activeState === code;
           const isHov = hovered === code;
           const highSev = count > 0 ? getHighestSeverity(stateSignals) : "info";
-          const sevConfig = SEVERITY_CONFIG[highSev];
 
           return (
             <motion.button
@@ -342,7 +385,11 @@ function IntelligenceMap({
               {count >= 3 && (
                 <motion.div
                   className="absolute rounded-md"
-                  style={{ width: 44, height: 30, border: `1px solid ${SEVERITY_CONFIG[highSev]?.color === "bg-red-400" ? "#ef4444" : "#C4A048"}`, opacity: 0.3 }}
+                  style={{
+                    width: 44, height: 30,
+                    border: `1px solid ${SEVERITY_CONFIG[highSev]?.color === "bg-red-400" ? "#ef4444" : "#C4A048"}`,
+                    opacity: 0.3,
+                  }}
                   animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0, 0.3] }}
                   transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
                 />
@@ -409,22 +456,150 @@ function IntelligenceMap({
   );
 }
 
+// ── Correlation Panel ───────────────────────────────────────────
+
+function CorrelationPanel({ signal }: { signal: SignalEvent }) {
+  const relatedQuery = trpc.signals.related.useQuery(
+    {
+      signal_id: signal.id,
+      entity: signal.entity_name || undefined,
+      market: signal.market || undefined,
+      state: signal.state || undefined,
+      exclude_id: signal.id,
+    },
+    { staleTime: 60_000 },
+  );
+
+  const related: (SignalEvent & { _match_field?: string })[] =
+    (relatedQuery.data as any)?.related || [];
+
+  if (relatedQuery.isLoading) {
+    return (
+      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Brain size={12} className="text-cyan-400 animate-pulse" />
+          <span className="font-mono text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            Scanning for correlations...
+          </span>
+        </div>
+        <div className="space-y-2">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-10 rounded-lg bg-white/[0.02] animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const matchFieldLabel: Record<string, string> = {
+    entity_name: "Same entity",
+    market: "Same market",
+    state: "Same state",
+  };
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Brain size={12} className="text-cyan-400" />
+          <span className="font-mono text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            Correlation Analysis
+          </span>
+        </div>
+        {related.length > 0 && (
+          <Badge variant="outline" className="font-mono text-[0.5rem] border-cyan-400/25 text-cyan-300">
+            {related.length} related
+          </Badge>
+        )}
+      </div>
+
+      {related.length === 0 ? (
+        <p className="font-mono text-[0.62rem] text-slate-600 italic">
+          No correlated signals found within the 30-day window.
+        </p>
+      ) : (
+        <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
+          {related.map((r) => {
+            const Icon = TYPE_ICONS[r.signal_type] || Activity;
+            const matchLabel = matchFieldLabel[r._match_field || ""] || "Related";
+            return (
+              <div
+                key={r.id}
+                className="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2.5 hover:bg-white/[0.03] transition"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Icon size={11} className="text-slate-400 shrink-0" />
+                      <span className="font-mono text-[0.65rem] font-semibold text-white truncate">
+                        {r.entity_name || r.signal_type.replace(/_/g, " ")}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="rounded bg-cyan-400/10 border border-cyan-400/20 px-1.5 py-0.5 font-mono text-[0.44rem] uppercase tracking-wider text-cyan-300">
+                        {matchLabel}
+                      </span>
+                      <span className="font-mono text-[0.48rem] text-slate-500">
+                        {r.signal_type.replace(/_/g, " ")}
+                      </span>
+                      {r.state && (
+                        <span className="font-mono text-[0.48rem] text-slate-500 flex items-center gap-0.5">
+                          <MapPin size={8} /> {r.state}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="font-mono text-[0.48rem] text-slate-600 shrink-0">
+                    {timeAgo(r.captured_at)}
+                  </span>
+                </div>
+                {r.value !== null && (
+                  <div className="mt-1.5 font-mono text-[0.58rem] text-amber-200/70">
+                    {formatValue(r.value, r.signal_type)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {related.length >= 3 && (
+        <div className="mt-3 rounded-lg border border-amber-400/15 bg-amber-400/5 px-3 py-2">
+          <div className="flex items-center gap-1.5">
+            <AlertTriangle size={10} className="text-amber-300" />
+            <span className="font-mono text-[0.56rem] font-semibold text-amber-200">
+              Cluster detected — {related.length} converging signals
+            </span>
+          </div>
+          <p className="font-mono text-[0.52rem] text-amber-200/60 mt-0.5">
+            Multiple signals for {signal.entity_name || signal.state || "this region"} suggest increased activity.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Signal Detail Sheet ─────────────────────────────────────────
 
 function SignalDetailSheet({
   signal,
   open,
   onClose,
+  onStatusChange,
 }: {
   signal: SignalEvent | null;
   open: boolean;
   onClose: () => void;
+  onStatusChange: (signalId: string, status: string) => void;
 }) {
   if (!signal) return null;
 
   const Icon = TYPE_ICONS[signal.signal_type] || Activity;
   const sev = SEVERITY_CONFIG[signal.severity] || SEVERITY_CONFIG.info;
   const catColor = CATEGORY_COLOR[signal.category] || CATEGORY_COLOR.entity;
+  const statusCfg = STATUS_CONFIG[signal.status];
   const dirStyle = signal.direction
     ? signal.direction === "bullish" || signal.direction === "positive"
       ? { icon: TrendingUp, color: "text-emerald-400", label: "Bullish" }
@@ -437,12 +612,20 @@ function SignalDetailSheet({
     ([k]) => k !== "description",
   );
 
+  const statusActions: { status: string; label: string; icon: typeof Eye; color: string }[] = [
+    { status: "reviewed", label: "Mark Reviewed", icon: Eye, color: "text-blue-300 border-blue-400/20 bg-blue-400/8" },
+    { status: "actionable", label: "Escalate", icon: Flag, color: "text-amber-300 border-amber-400/20 bg-amber-400/8" },
+    { status: "acted_on", label: "Mark Acted On", icon: CheckCircle2, color: "text-emerald-300 border-emerald-400/20 bg-emerald-400/8" },
+    { status: "dismissed", label: "Dismiss", icon: XCircle, color: "text-slate-400 border-slate-400/20 bg-slate-400/8" },
+  ].filter((a) => a.status !== signal.status);
+
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent
         side="right"
-        className="w-[480px] max-w-[90vw] overflow-y-auto border-l border-white/10 bg-[#060E1A] p-0"
+        className="w-[500px] max-w-[92vw] overflow-y-auto border-l border-white/10 bg-[#060E1A] p-0"
       >
+        {/* Header */}
         <div className="sticky top-0 z-10 border-b border-white/10 bg-[#060E1A]/95 backdrop-blur px-5 py-4">
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -456,6 +639,11 @@ function SignalDetailSheet({
                 <span className={`rounded border px-2 py-0.5 font-mono text-[0.5rem] uppercase tracking-wider ${catColor}`}>
                   {signal.category.replace(/_/g, " ")}
                 </span>
+                {statusCfg && (
+                  <span className={`rounded border px-2 py-0.5 font-mono text-[0.5rem] uppercase tracking-wider ${statusCfg.color} ${statusCfg.bg} ${statusCfg.border}`}>
+                    {statusCfg.label}
+                  </span>
+                )}
                 <span className="font-mono text-[0.52rem] uppercase tracking-wide text-slate-500">
                   {signal.signal_type.replace(/_/g, " ")}
                 </span>
@@ -475,6 +663,7 @@ function SignalDetailSheet({
         </div>
 
         <div className="px-5 py-4 space-y-4">
+          {/* Metrics grid */}
           <div className="grid grid-cols-3 gap-3">
             {signal.value !== null && (
               <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5">
@@ -501,15 +690,12 @@ function SignalDetailSheet({
               <p className="font-mono text-sm font-semibold text-white capitalize">{signal.severity}</p>
             </div>
             <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5">
-              <p className="font-mono text-[0.48rem] uppercase tracking-[0.12em] text-slate-500">Status</p>
-              <p className="font-mono text-sm font-semibold text-white capitalize">{signal.status}</p>
-            </div>
-            <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5">
               <p className="font-mono text-[0.48rem] uppercase tracking-[0.12em] text-slate-500">Source</p>
               <p className="font-mono text-sm font-semibold text-white">{signal.source}</p>
             </div>
           </div>
 
+          {/* Description */}
           {signal.payload?.description && (
             <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
               <p className="font-mono text-[0.56rem] font-bold uppercase tracking-[0.14em] text-slate-500 mb-1.5">Description</p>
@@ -517,6 +703,7 @@ function SignalDetailSheet({
             </div>
           )}
 
+          {/* Signal Data */}
           {payloadEntries.length > 0 && (
             <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
               <p className="font-mono text-[0.56rem] font-bold uppercase tracking-[0.14em] text-slate-500 mb-2">Signal Data</p>
@@ -533,36 +720,26 @@ function SignalDetailSheet({
             </div>
           )}
 
-          <div className="rounded-xl border-l-4 border-slate-600/40 bg-white/[0.02] p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Eye size={12} className="text-slate-500" />
-              <span className="font-mono text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                Correlation Analysis
-              </span>
-            </div>
-            <p className="font-mono text-[0.68rem] text-slate-500 italic">
-              Cross-signal correlation available in Session 2. Related signals for this entity and market will appear here.
-            </p>
-          </div>
+          {/* Correlation Panel */}
+          <CorrelationPanel signal={signal} />
 
+          {/* Metadata footer */}
           <div className="flex items-center justify-between font-mono text-[0.5rem] text-slate-600 pt-2">
             <span>Ref: {signal.source_ref || "—"}</span>
             <span>Captured: {new Date(signal.captured_at).toLocaleString()}</span>
           </div>
 
-          <div className="flex gap-2 border-t border-white/5 pt-4">
-            <Button
-              disabled
-              className="rounded-lg border border-cyan-300/20 bg-cyan-400/8 px-3 py-2 font-mono text-[0.58rem] uppercase text-cyan-200 opacity-50"
-            >
-              <Flag size={11} className="mr-1.5" /> Escalate
-            </Button>
-            <Button
-              disabled
-              className="rounded-lg border border-amber-300/20 bg-amber-400/8 px-3 py-2 font-mono text-[0.58rem] uppercase text-amber-200 opacity-50"
-            >
-              <ExternalLink size={11} className="mr-1.5" /> Link to Deal
-            </Button>
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-2 border-t border-white/5 pt-4">
+            {statusActions.map(({ status, label, icon: ActionIcon, color }) => (
+              <Button
+                key={status}
+                onClick={() => onStatusChange(signal.id, status)}
+                className={`rounded-lg border px-3 py-2 font-mono text-[0.58rem] uppercase hover:brightness-125 transition ${color}`}
+              >
+                <ActionIcon size={11} className="mr-1.5" /> {label}
+              </Button>
+            ))}
           </div>
         </div>
       </SheetContent>
@@ -570,42 +747,129 @@ function SignalDetailSheet({
   );
 }
 
+// ── New Signals Banner ──────────────────────────────────────────
+
+function NewSignalsBanner({
+  count,
+  onClick,
+}: {
+  count: number;
+  onClick: () => void;
+}) {
+  if (count <= 0) return null;
+
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      onClick={onClick}
+      className="w-full rounded-lg border border-amber-400/30 bg-amber-400/10 backdrop-blur px-4 py-2.5 flex items-center justify-center gap-2 hover:bg-amber-400/15 transition-colors mb-3"
+    >
+      <Bell size={13} className="text-amber-300" />
+      <span className="font-mono text-[0.68rem] font-semibold text-amber-200">
+        {count} new signal{count > 1 ? "s" : ""} — click to load
+      </span>
+      <ChevronDown size={12} className="text-amber-300" />
+    </motion.button>
+  );
+}
+
 // ── Main Component ──────────────────────────────────────────────
 
 export default function EagleEyeV2() {
   const [category, setCategory] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [dateRange, setDateRange] = useState("30d");
   const [page, setPage] = useState(0);
   const [mapFilterState, setMapFilterState] = useState<string | null>(null);
   const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
+  const [pendingNewCount, setPendingNewCount] = useState(0);
+  const [revealedAt, setRevealedAt] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const listRef = useRef<HTMLDivElement>(null);
 
+  // Build query params
   const filterParams = useMemo(() => {
     const params: Record<string, string> = {
       limit: String(PAGE_SIZE),
       offset: String(page * PAGE_SIZE),
     };
     if (category !== "all") params.category = category;
+    if (statusFilter !== "all") params.status = statusFilter;
     if (mapFilterState) params.state = mapFilterState;
     return params;
-  }, [category, page, mapFilterState]);
+  }, [category, statusFilter, page, mapFilterState]);
 
+  // Main signal query — full refetch every 30s
   const signalsQuery = trpc.signals.query.useQuery(filterParams, {
-    refetchInterval: 30000,
+    refetchInterval: POLL_INTERVAL,
   });
   const statsQuery = trpc.signals.stats.useQuery(undefined, {
-    refetchInterval: 30000,
+    refetchInterval: POLL_INTERVAL,
   });
   const vectorQuery = trpc.signals.vectorLatest.useQuery(undefined, {
     retry: false,
   });
+
+  // Cursor-based new signal detection
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const lastSeen = getLastSeenAt();
+      if (!lastSeen) return;
+
+      try {
+        const result: any = await api.signals.query({ since_ts: lastSeen, limit: "1" });
+        const newCount = result?.count || 0;
+        if (newCount > 0) {
+          setPendingNewCount(newCount);
+        }
+      } catch {
+        // Silently fail — next poll will retry
+      }
+    }, POLL_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Track lastSeenAt from query results
+  useEffect(() => {
+    const allSignals: SignalEvent[] = (signalsQuery.data as any)?.signals || [];
+    if (allSignals.length > 0 && pendingNewCount === 0) {
+      const newest = allSignals.reduce((a, b) =>
+        a.captured_at > b.captured_at ? a : b,
+      );
+      setLastSeenAt(newest.captured_at);
+    }
+  }, [signalsQuery.data, pendingNewCount]);
+
+  const handleRevealNew = useCallback(() => {
+    const lastSeen = getLastSeenAt();
+    setRevealedAt(lastSeen);
+    setPendingNewCount(0);
+    queryClient.invalidateQueries({ queryKey: ["signals"] });
+    setPage(0);
+    listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+
+    // Update lastSeenAt after a small delay to let the query return
+    setTimeout(() => {
+      setRevealedAt(null);
+    }, 10_000);
+  }, [queryClient]);
+
   const pollFred = trpc.signals.pollFred.useMutation({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["signals"] });
       setPolling(false);
     },
     onError: () => setPolling(false),
+  });
+
+  const statusMutation = trpc.signals.updateStatus.useMutation({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["signals"] });
+    },
   });
 
   const allSignals: SignalEvent[] = (signalsQuery.data as any)?.signals || [];
@@ -639,10 +903,19 @@ export default function EagleEyeV2() {
     setPage(0);
   }, []);
 
+  const handleStatusFilterChange = useCallback((s: string) => {
+    setStatusFilter(s);
+    setPage(0);
+  }, []);
+
   const handlePollFred = () => {
     setPolling(true);
     pollFred.mutate(undefined as any);
   };
+
+  const handleStatusChange = useCallback((signalId: string, status: string) => {
+    statusMutation.mutate({ signalId, status });
+  }, [statusMutation]);
 
   const highPriorityCount = allSignals.filter(
     (s) => s.severity === "critical" || s.severity === "high",
@@ -693,7 +966,12 @@ export default function EagleEyeV2() {
           </div>
 
           <div className="flex items-center gap-3">
-            {signalsQuery.isFetching && (
+            {statusMutation.isPending && (
+              <span className="font-mono text-[0.48rem] text-amber-400/60 flex items-center gap-1">
+                <RefreshCw size={9} className="animate-spin" /> saving
+              </span>
+            )}
+            {signalsQuery.isFetching && !statusMutation.isPending && (
               <span className="font-mono text-[0.48rem] text-cyan-400/60 flex items-center gap-1">
                 <RefreshCw size={9} className="animate-spin" /> syncing
               </span>
@@ -718,12 +996,20 @@ export default function EagleEyeV2() {
         </div>
       </div>
 
+      {/* ── New Signals Banner ─────────────────────────────── */}
+      <AnimatePresence>
+        {pendingNewCount > 0 && (
+          <NewSignalsBanner count={pendingNewCount} onClick={handleRevealNew} />
+        )}
+      </AnimatePresence>
+
       {/* ── Main Content: Stream + Map ──────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(340px,2fr)_3fr] gap-4">
         {/* LEFT: Signal Stream */}
         <div className="flex flex-col min-h-0">
           {/* Filter Bar */}
           <div className="space-y-2.5 mb-3">
+            {/* Category pills */}
             <div className="flex items-center gap-1.5 flex-wrap">
               {CATEGORIES.map((cat) => {
                 const count = cat.key === "all"
@@ -749,7 +1035,25 @@ export default function EagleEyeV2() {
                 );
               })}
             </div>
-            <div className="flex items-center gap-3">
+
+            {/* Status filter + date range */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-1 rounded-md border border-white/[0.06] bg-white/[0.02] p-0.5">
+                {STATUS_OPTIONS.map((s) => (
+                  <button
+                    key={s.key}
+                    onClick={() => handleStatusFilterChange(s.key)}
+                    className={`rounded px-2 py-0.5 font-mono text-[0.5rem] uppercase tracking-wider transition ${
+                      statusFilter === s.key
+                        ? `bg-white/10 ${s.color}`
+                        : "text-slate-600 hover:text-slate-400"
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
               <div className="flex items-center gap-1 rounded-md border border-white/[0.06] bg-white/[0.02] p-0.5">
                 {DATE_RANGES.map((dr) => (
                   <button
@@ -763,6 +1067,7 @@ export default function EagleEyeV2() {
                   </button>
                 ))}
               </div>
+
               {mapFilterState && (
                 <span className="flex items-center gap-1 rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 font-mono text-[0.5rem] text-amber-300">
                   <MapPin size={9} /> {mapFilterState}
@@ -784,14 +1089,14 @@ export default function EagleEyeV2() {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] mx-auto mb-3">
                 <Search size={18} className="text-slate-600" />
               </div>
-              <p className="font-mono text-sm text-slate-500">No signals yet</p>
+              <p className="font-mono text-sm text-slate-500">No signals match filters</p>
               <p className="font-mono text-[0.58rem] text-slate-600 mt-1 max-w-[280px] mx-auto">
-                EagleEye V2 monitors data sources for deal-sourcing intelligence. Hit "Poll FRED" to pull macro data, or seed deal signals via the webhook API.
+                Try broadening your category, status, or date range filters.
               </p>
             </div>
           ) : (
             <>
-              <div className="space-y-1.5 max-h-[calc(100vh-320px)] overflow-y-auto pr-1 scrollbar-thin">
+              <div ref={listRef} className="space-y-1.5 max-h-[calc(100vh-320px)] overflow-y-auto pr-1 scrollbar-thin">
                 <AnimatePresence mode="popLayout">
                   {displaySignals.map((signal) => (
                     <SignalCard
@@ -799,6 +1104,7 @@ export default function EagleEyeV2() {
                       signal={signal}
                       onClick={() => setSelectedSignalId(signal.id)}
                       isSelected={selectedSignalId === signal.id}
+                      isNew={!!(revealedAt && signal.captured_at > revealedAt)}
                     />
                   ))}
                 </AnimatePresence>
@@ -850,7 +1156,9 @@ export default function EagleEyeV2() {
         signal={selectedSignal}
         open={!!selectedSignal}
         onClose={() => setSelectedSignalId(null)}
+        onStatusChange={handleStatusChange}
       />
     </div>
   );
 }
+

@@ -1,17 +1,21 @@
 """Signal Intelligence routes — unified signal query + FRED poll trigger.
 
-GET  /api/signals/query       — query persisted signals with filters
-GET  /api/signals/latest      — most recent signal event
-GET  /api/signals/stats       — signal counts by category/type
-POST /api/signals/poll/fred   — pull live FRED rates, normalize, persist, score
-GET  /api/signals/vector/latest  — latest VectorAgent snapshot
-GET  /api/signals/vector/history — scoring history
+GET   /api/signals/query          — query persisted signals with filters + cursor
+GET   /api/signals/latest         — most recent signal event
+GET   /api/signals/stats          — signal counts by category/type
+GET   /api/signals/related        — related signals for correlation panel
+PATCH /api/signals/<id>/status    — update signal lifecycle status
+POST  /api/signals/poll/fred      — pull live FRED rates, normalize, persist, score
+GET   /api/signals/vector/latest  — latest VectorAgent snapshot
+GET   /api/signals/vector/history — scoring history
 """
 from flask import Blueprint, jsonify, request, current_app
-from datetime import datetime
+from datetime import datetime, timedelta
 from services.auth import require_auth
 
 signals_bp = Blueprint("signals", __name__)
+
+VALID_STATUSES = ("new", "reviewed", "actionable", "acted_on", "dismissed")
 
 
 def _ts():
@@ -28,8 +32,12 @@ def _err(msg, code=400):
 
 @signals_bp.route("/query", methods=["GET"])
 def query_signals():
-    """Query persisted signal events with optional filters."""
+    """Query persisted signal events with optional filters.
+    Supports cursor-based polling via ?since_ts=ISO8601 — returns only signals
+    with captured_at > since_ts."""
     from services import signal_service
+
+    since_ts = request.args.get("since_ts")
 
     results = signal_service.query(
         category=request.args.get("category"),
@@ -38,6 +46,7 @@ def query_signals():
         status=request.args.get("status"),
         state=request.args.get("state"),
         deal_id=request.args.get("deal_id"),
+        since_ts=since_ts,
         limit=request.args.get("limit", 100, type=int),
     )
     return _ok({"signals": results, "count": len(results)})
@@ -79,6 +88,76 @@ def signal_stats():
         "by_type": by_type,
         "by_source": by_source,
     })
+
+
+@signals_bp.route("/related", methods=["GET"])
+def related_signals():
+    """Find signals correlated to a given signal — same entity, market, or state
+    within a 30-day window. Used by the Correlation Panel."""
+    from services.database import db
+
+    signal_id = request.args.get("signal_id")
+    entity = request.args.get("entity")
+    market = request.args.get("market")
+    state = request.args.get("state")
+    exclude_id = request.args.get("exclude_id", signal_id)
+
+    if not any([entity, market, state]):
+        return _err("At least one of entity, market, or state is required")
+
+    cutoff = (datetime.utcnow() - timedelta(days=30)).isoformat()
+    all_related = []
+    seen_ids = {exclude_id} if exclude_id else set()
+
+    for field, value in [("entity_name", entity), ("market", market), ("state", state)]:
+        if not value:
+            continue
+        params = {
+            field: f"eq.{value}",
+            "captured_at": f"gte.{cutoff}",
+            "order": "captured_at.desc",
+            "limit": "10",
+        }
+        rows = db.select("signal_events", params) or []
+        if isinstance(rows, list):
+            for r in rows:
+                rid = r.get("id")
+                if rid and rid not in seen_ids:
+                    seen_ids.add(rid)
+                    r["_match_field"] = field
+                    all_related.append(r)
+
+    all_related.sort(key=lambda s: s.get("captured_at", ""), reverse=True)
+
+    return _ok({
+        "related": all_related[:15],
+        "count": len(all_related),
+        "query": {"entity": entity, "market": market, "state": state, "window_days": 30},
+    })
+
+
+@signals_bp.route("/<signal_id>/status", methods=["PATCH"])
+def update_signal_status(signal_id):
+    """Update signal lifecycle status: new → reviewed → actionable → acted_on → dismissed."""
+    from services.database import db
+
+    body = request.get_json(silent=True) or {}
+    new_status = body.get("status")
+
+    if new_status not in VALID_STATUSES:
+        return _err(f"Invalid status. Must be one of: {', '.join(VALID_STATUSES)}")
+
+    result = db.update(
+        "signal_events",
+        {"id": f"eq.{signal_id}"},
+        {"status": new_status},
+    )
+
+    if not result:
+        return _err("Signal not found or update failed", 404)
+
+    updated = result[0] if isinstance(result, list) and result else result
+    return _ok(updated)
 
 
 @signals_bp.route("/poll/fred", methods=["POST"])

@@ -467,6 +467,21 @@ const signalHooks = {
         ...opts,
       }),
   },
+  related: {
+    useQuery: (
+      input?: { signal_id?: string; entity?: string; market?: string; state?: string; exclude_id?: string },
+      opts?: Partial<UseQueryOptions>,
+    ) =>
+      useQuery({
+        queryKey: ["signals", "related", input],
+        queryFn: () => api.signals.related(input || {}),
+        enabled: !!(input?.entity || input?.market || input?.state),
+        ...opts,
+      }),
+  },
+  updateStatus: m((input: { signalId: string; status: string }) =>
+    api.signals.updateStatus(input.signalId, input.status),
+  ),
   stats: q(["signals", "stats"], () => api.signals.stats()),
   vectorLatest: q(["signals", "vectorLatest"], () => api.signals.vectorLatest()),
   vectorHistory: q(["signals", "vectorHistory"], () => api.signals.vectorHistory()),

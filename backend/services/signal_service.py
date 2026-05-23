@@ -112,8 +112,9 @@ def ingest_batch(events: list[SignalEvent]) -> list[dict]:
 
 def query(category: str = None, signal_type: str = None, source: str = None,
           status: str = None, state: str = None, deal_id: str = None,
-          limit: int = 100) -> list[dict]:
-    """Query persisted signals with optional filters."""
+          since_ts: str = None, limit: int = 100) -> list[dict]:
+    """Query persisted signals with optional filters.
+    since_ts: ISO8601 timestamp — only return signals captured after this time."""
     params = {}
     if category:
         params["category"] = f"eq.{category}"
@@ -127,6 +128,8 @@ def query(category: str = None, signal_type: str = None, source: str = None,
         params["state"] = f"eq.{state}"
     if deal_id:
         params["deal_id"] = f"eq.{deal_id}"
+    if since_ts:
+        params["captured_at"] = f"gt.{since_ts}"
     return db.query_signals(params, limit=limit)
 
 

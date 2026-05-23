@@ -378,6 +378,18 @@ export const signals = {
     return nestFetch(`/api/signals/latest?${params}`);
   },
   stats: () => nestFetch("/api/signals/stats"),
+  related: (params: { signal_id?: string; entity?: string; market?: string; state?: string; exclude_id?: string }) => {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v) qs.set(k, v);
+    }
+    return nestFetch(`/api/signals/related?${qs}`);
+  },
+  updateStatus: (signalId: string, status: string) =>
+    nestFetch(`/api/signals/${signalId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
   pollFred: () => nestFetch("/api/signals/poll/fred", { method: "POST" }),
   vectorLatest: (dealId?: string) =>
     nestFetch(`/api/signals/vector/latest${dealId ? `?deal_id=${dealId}` : ""}`),
