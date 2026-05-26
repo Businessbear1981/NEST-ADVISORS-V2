@@ -8,6 +8,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import ComingSoon, { hasAccess } from "./components/ComingSoon";
 import Home from "./pages/Home";
 import { AgentsPage, ArchitecturePage, DashboardPage, PortalsPage } from "./pages/WorkbenchPages";
 import { OperationsDealsPage, OperationsDealDetailPage } from "./pages/OperationsPages";
@@ -75,6 +76,14 @@ function Router() {
 }
 
 function App() {
+  if (!hasAccess()) {
+    return (
+      <ErrorBoundary>
+        <ComingSoon />
+      </ErrorBoundary>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark">
